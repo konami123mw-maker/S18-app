@@ -1,0 +1,7 @@
+{
+  "name": "S18_THEME",
+  "description": "Professional dynamic mobile theme platform for smartphone brands with previews, downloads, and admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
