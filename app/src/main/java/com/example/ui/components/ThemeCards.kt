@@ -481,7 +481,7 @@ fun CompanyCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(
                             Brush.linearGradient(
@@ -490,12 +490,21 @@ fun CompanyCard(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = company.name.take(2).uppercase(),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
+                    if (!company.logoUrl.isNullOrBlank()) {
+                        ThemeImage(
+                            imageUrl = company.logoUrl,
+                            contentDescription = company.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = company.name.take(2).uppercase(),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
                 }
 
                 Column {
@@ -518,6 +527,78 @@ fun CompanyCard(
                 tint = Color(0xFF00E5FF),
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+}
+
+/**
+ * Mobile-First Brand Card for Horizontal Rail
+ */
+@Composable
+fun BrandPillCard(
+    company: Company,
+    themeCount: Int,
+    language: AppLanguage,
+    isSelected: Boolean = false,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .testTag("brand_pill_${company.slug}"),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) Color(0xFF00E5FF).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isSelected) 1.5.dp else 1.dp,
+            color = if (isSelected) Color(0xFF00E5FF) else MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF0F172A))
+                    .border(1.dp, if (isSelected) Color(0xFF00E5FF) else Color(0x3300E5FF), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!company.logoUrl.isNullOrBlank()) {
+                    ThemeImage(
+                        imageUrl = company.logoUrl,
+                        contentDescription = company.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(
+                        text = company.name.take(2).uppercase(),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Color(0xFF00E5FF)
+                    )
+                }
+            }
+
+            Column {
+                Text(
+                    text = company.name,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = if (isSelected) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (language == AppLanguage.AR) "$themeCount ثيم" else "$themeCount themes",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

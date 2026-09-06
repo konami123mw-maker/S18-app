@@ -28,12 +28,15 @@ object ThemeDownloader {
         onStatus: (String) -> Unit = {}
     ) {
         val cleanUrl = url.trim()
-        if (cleanUrl.isBlank() || (!cleanUrl.startsWith("http://", ignoreCase = true) && !cleanUrl.startsWith("https://", ignoreCase = true))) {
-            val errMsg = "رابط التحميل غير صالح (يجب أن يبدأ بـ https://)"
+        if (cleanUrl.isBlank()) {
+            val errMsg = "ملف الثيم أو الرابط غير محدد"
             Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
             onStatus(errMsg)
             return
         }
+
+        val safeTitle = themeTitle.trim().replace(Regex("[^a-zA-Z0-9_\\-\\.]"), "_").ifEmpty { "theme" }
+        val safeVersion = versionStr.trim().replace(Regex("[^a-zA-Z0-9_\\-\\.]"), "_").ifEmpty { "1.0" }
 
         // Determine appropriate extension (.mtz, .zip, .hwt, etc.)
         val extension = when {
@@ -46,10 +49,55 @@ object ThemeDownloader {
             cleanUrl.contains(".zip", ignoreCase = true) -> ".zip"
             else -> ".zip"
         }
-
-        val safeTitle = themeTitle.trim().replace(Regex("[^a-zA-Z0-9_\\-\\.]"), "_").ifEmpty { "theme" }
-        val safeVersion = versionStr.trim().replace(Regex("[^a-zA-Z0-9_\\-\\.]"), "_").ifEmpty { "1.0" }
         val fileName = "S18_${safeTitle}_v${safeVersion}$extension"
+
+        // Handle local file uploaded directly from device
+        if (cleanUrl.startsWith("/") || cleanUrl.startsWith("file://") || cleanUrl.startsWith("content://")) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                    val targetFile = File(downloadsDir, fileName)
+
+                    if (cleanUrl.startsWith("content://")) {
+                        val uri = Uri.parse(cleanUrl)
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            FileOutputStream(targetFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    } else {
+                        val srcPath = if (cleanUrl.startsWith("file://")) cleanUrl.removePrefix("file://") else cleanUrl
+                        val srcFile = File(srcPath)
+                        if (srcFile.exists()) {
+                            srcFile.copyTo(targetFile, overwrite = true)
+                        } else {
+                            throw java.io.FileNotFoundException("الملف غير موجود في الجهاز: $srcPath")
+                        }
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        val msg = "تم حفظ ملف الثيم بنجاح في مجلد التنزيلات (Downloads): $fileName"
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        onStatus(msg)
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        val err = "فشل حفظ ملف الثيم: ${e.localizedMessage}"
+                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                        onStatus(err)
+                    }
+                }
+            }
+            return
+        }
+
+        if (!cleanUrl.startsWith("http://", ignoreCase = true) && !cleanUrl.startsWith("https://", ignoreCase = true)) {
+            val errMsg = "رابط التحميل غير صالح (يجب أن يبدأ بـ https:// أو يكون ملفاً محلياً)"
+            Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
+            onStatus(errMsg)
+            return
+        }
 
         try {
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager

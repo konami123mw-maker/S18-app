@@ -22,6 +22,9 @@ interface CompanyDao {
     @Query("SELECT * FROM companies WHERE slug = :slug LIMIT 1")
     suspend fun getCompanyBySlug(slug: String): Company?
 
+    @Query("SELECT * FROM companies LIMIT 1")
+    suspend fun getFirstCompany(): Company?
+
     @Query("SELECT * FROM companies WHERE slug = :slug LIMIT 1")
     fun getCompanyBySlugFlow(slug: String): Flow<Company?>
 
@@ -45,6 +48,9 @@ interface DesignerDao {
 
     @Query("SELECT * FROM designers WHERE slug = :slug LIMIT 1")
     suspend fun getDesignerBySlug(slug: String): Designer?
+
+    @Query("SELECT * FROM designers LIMIT 1")
+    suspend fun getFirstDesigner(): Designer?
 
     @Query("SELECT * FROM designers WHERE slug = :slug LIMIT 1")
     fun getDesignerBySlugFlow(slug: String): Flow<Designer?>

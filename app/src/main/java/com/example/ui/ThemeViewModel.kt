@@ -474,9 +474,14 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
         onComplete: (Long) -> Unit = {}
     ) {
         viewModelScope.launch {
-            val id = repository.saveTheme(theme, version, previews)
-            _feedbackMessage.value = S18Strings.get("theme_updated_success", _language.value)
-            onComplete(id)
+            try {
+                val id = repository.saveTheme(theme, version, previews)
+                _feedbackMessage.value = S18Strings.get("theme_updated_success", _language.value)
+                onComplete(id)
+            } catch (e: Exception) {
+                android.util.Log.e("ThemeViewModel", "Error saving theme", e)
+                _feedbackMessage.value = "فشل نشر الثيم: ${e.localizedMessage ?: "تأكد من صحة البيانات"}"
+            }
         }
     }
 
@@ -581,9 +586,14 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveSubAdmin(subAdmin: SubAdmin, onComplete: (Long) -> Unit) {
         viewModelScope.launch {
-            val id = repository.saveSubAdmin(subAdmin)
-            _feedbackMessage.value = "تم حفظ بيانات المشرف بنجاح"
-            onComplete(id)
+            try {
+                val id = repository.saveSubAdmin(subAdmin)
+                _feedbackMessage.value = "تم حفظ بيانات المشرف بنجاح"
+                onComplete(id)
+            } catch (e: Exception) {
+                android.util.Log.e("ThemeViewModel", "Error saving sub-admin", e)
+                _feedbackMessage.value = "فشل حفظ بيانات المشرف: ${e.localizedMessage ?: "تأكد من البيانات"}"
+            }
         }
     }
 

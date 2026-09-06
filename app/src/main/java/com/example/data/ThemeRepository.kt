@@ -135,11 +135,52 @@ class ThemeRepository(
         version: ThemeVersion? = null,
         previews: List<ThemePreview>? = null
     ): Long = withContext(Dispatchers.IO) {
-        val themeId = if (theme.id == 0L) {
-            themeDao.insertTheme(theme.copy(createdAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis()))
+        // 1. Resolve safe and guaranteed valid companyId
+        val validCompanyId = if (theme.companyId > 0 && companyDao.getCompanyById(theme.companyId) != null) {
+            theme.companyId
         } else {
-            themeDao.updateTheme(theme.copy(updatedAt = System.currentTimeMillis()))
-            theme.id
+            companyDao.getFirstCompany()?.id ?: companyDao.insertCompany(
+                Company(
+                    name = "S18 Studio",
+                    slug = "s18-studio",
+                    description = "Official S18 Theme Studio"
+                )
+            )
+        }
+
+        // 2. Resolve safe and guaranteed valid designerId
+        val validDesignerId = if (theme.designerId > 0 && designerDao.getDesignerById(theme.designerId) != null) {
+            theme.designerId
+        } else {
+            designerDao.getFirstDesigner()?.id ?: designerDao.insertDesigner(
+                Designer(
+                    name = "S18 Creator",
+                    slug = "s18-creator",
+                    bio = "Official S18 Theme Designer"
+                )
+            )
+        }
+
+        // 3. Resolve safe unique slug
+        var safeSlug = theme.slug.trim().ifBlank {
+            theme.name.trim().lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifBlank { "theme" }
+        }
+        val existingThemeWithSlug = themeDao.getThemeBySlug(safeSlug)
+        if (existingThemeWithSlug != null && existingThemeWithSlug.id != theme.id) {
+            safeSlug = "$safeSlug-${System.currentTimeMillis() % 10000}"
+        }
+
+        val sanitizedTheme = theme.copy(
+            companyId = validCompanyId,
+            designerId = validDesignerId,
+            slug = safeSlug
+        )
+
+        val themeId = if (sanitizedTheme.id == 0L) {
+            themeDao.insertTheme(sanitizedTheme.copy(createdAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis()))
+        } else {
+            themeDao.updateTheme(sanitizedTheme.copy(updatedAt = System.currentTimeMillis()))
+            sanitizedTheme.id
         }
 
         if (version != null) {
@@ -267,10 +308,16 @@ class ThemeRepository(
      * Real JSON Database Backup Export
      */
     suspend fun saveSubAdmin(subAdmin: SubAdmin): Long = withContext(Dispatchers.IO) {
-        if (subAdmin.id == 0L) {
-            subAdminDao.insertSubAdmin(subAdmin)
+        val cleanEmail = subAdmin.email.trim()
+        val existing = subAdminDao.getSubAdminByEmail(cleanEmail)
+        if (existing != null && subAdmin.id == 0L) {
+            val updated = subAdmin.copy(id = existing.id, email = cleanEmail)
+            subAdminDao.updateSubAdmin(updated)
+            existing.id
+        } else if (subAdmin.id == 0L) {
+            subAdminDao.insertSubAdmin(subAdmin.copy(email = cleanEmail))
         } else {
-            subAdminDao.updateSubAdmin(subAdmin)
+            subAdminDao.updateSubAdmin(subAdmin.copy(email = cleanEmail))
             subAdmin.id
         }
     }

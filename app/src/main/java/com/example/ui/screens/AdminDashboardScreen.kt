@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
 import android.net.Uri
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -82,6 +84,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -124,9 +129,9 @@ fun AdminDashboardScreen(
 
     var activeTab by remember { mutableStateOf(initialTab) }
 
-    // If sub-admin is logged in, ensure restricted tabs default to THEMES
+    // If sub-admin is logged in, ensure restricted system tabs default to THEMES
     LaunchedEffect(isSuperAdmin, activeTab) {
-        if (!isSuperAdmin && (activeTab == AdminTab.SUB_ADMINS || activeTab == AdminTab.BACKUPS || activeTab == AdminTab.SETTINGS)) {
+        if (!isSuperAdmin && (activeTab == AdminTab.BACKUPS || activeTab == AdminTab.SETTINGS)) {
             activeTab = AdminTab.THEMES
         }
     }
@@ -596,6 +601,8 @@ fun AdminTabsRow(
             listOf(
                 AdminTab.THEMES,
                 AdminTab.WALLPAPERS,
+                AdminTab.COMPANIES,
+                AdminTab.SUB_ADMINS,
                 AdminTab.DASHBOARD,
                 AdminTab.COMMENTS,
                 AdminTab.BATTLES,
@@ -1055,6 +1062,30 @@ fun AdminThemeEditDialog(
     var customPreviewUrlInput by remember { mutableStateOf("") }
     var showAddUrlInput by remember { mutableStateOf(false) }
 
+    // Upload mode: 0 = Upload file directly from device, 1 = Remote URL link
+    var uploadMode by remember {
+        mutableStateOf(if (downloadUrl.startsWith("/") || downloadUrl.startsWith("file://") || downloadUrl.startsWith("content://")) 0 else 1)
+    }
+    var localFileName by remember { mutableStateOf(if (uploadMode == 0 && downloadUrl.isNotBlank()) downloadUrl.substringAfterLast('/') else "") }
+    var localFileSizeText by remember { mutableStateOf("") }
+
+    // Direct Device File Picker for theme package (.zip, .mtz, .hwt, etc.)
+    val themeFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            val (persistedPath, sizeBytes) = ThemeImageUtils.persistThemeFile(context, it)
+            val origName = ThemeImageUtils.getFileNameFromUri(context, it)
+            downloadUrl = persistedPath
+            localFileName = origName
+            localFileSizeText = if (sizeBytes > 1024 * 1024) {
+                String.format("%.1f MB", sizeBytes / (1024.0 * 1024.0))
+            } else {
+                String.format("%d KB", sizeBytes / 1024)
+            }
+        }
+    }
+
     // Direct Device Gallery Pickers with persistent internal storage copying
     val coverGalleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -1293,19 +1324,146 @@ fun AdminThemeEditDialog(
                     }
                 }
                 item {
-                    OutlinedTextField(
-                        value = downloadUrl,
-                        onValueChange = { downloadUrl = it },
-                        label = { Text("رابط التحميل الخارجي للملف (External URL)") },
-                        supportingText = {
-                            Text(
-                                text = "يتم تنزيل وحفظ الملف الفعلي في جهاز المستخدم عبر مدير التنزيلات الحقيقي",
-                                fontSize = 11.sp,
-                                color = Color(0xFF00E5FF)
+                    // Theme File Package Section: 2 clear options (Direct Device Upload vs External Link)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF0F172A))
+                            .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = if (language == AppLanguage.AR) "ملف الثيم للتحميل" else "Theme Package File",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color(0xFF00E5FF)
+                        )
+
+                        // Segmented Mode Selector
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { uploadMode = 0 },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (uploadMode == 0) Color(0xFF00E5FF) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            ) {
+                                Text(
+                                    text = if (language == AppLanguage.AR) "📁 رفع من الجهاز" else "📁 Device Upload",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (uploadMode == 0) Color(0xFF031024) else MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp)
+                                )
+                            }
+
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { uploadMode = 1 },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (uploadMode == 1) Color(0xFF00E5FF) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            ) {
+                                Text(
+                                    text = if (language == AppLanguage.AR) "🔗 رابط خارجي" else "🔗 Remote URL",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (uploadMode == 1) Color(0xFF031024) else MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp)
+                                )
+                            }
+                        }
+
+                        if (uploadMode == 0) {
+                            // Device File Picker Card
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFF1E293B),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4000E5FF)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (downloadUrl.isNotBlank() && (downloadUrl.startsWith("/") || downloadUrl.startsWith("file://") || downloadUrl.startsWith("content://"))) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(20.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = localFileName.ifBlank { "تم اختيار ملف الثيم بنجاح" },
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 12.sp,
+                                                    color = Color.White,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                if (localFileSizeText.isNotBlank()) {
+                                                    Text(text = "الحجم: $localFileSizeText", fontSize = 11.sp, color = Color(0xFF00E5FF))
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Text(
+                                            text = if (language == AppLanguage.AR)
+                                                "ارفع ملف الثيم (.zip, .mtz, .hwt, .theme) من ذاكرة جهازك مباشرة"
+                                            else
+                                                "Upload theme file (.zip, .mtz, etc.) directly from your device storage",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF94A3B8)
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            themeFilePicker.launch(arrayOf("*/*"))
+                                        },
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (downloadUrl.isNotBlank() && (downloadUrl.startsWith("/") || downloadUrl.startsWith("file://")))
+                                                (if (language == AppLanguage.AR) "تغيير الملف المحدد" else "Change Selected File")
+                                            else
+                                                (if (language == AppLanguage.AR) "اختيار ملف الثيم من الجهاز" else "Select File From Device"),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Remote URL field
+                            OutlinedTextField(
+                                value = downloadUrl,
+                                onValueChange = { downloadUrl = it },
+                                label = { Text(if (language == AppLanguage.AR) "رابط التحميل الخارجي للملف (External URL)" else "External Download URL") },
+                                placeholder = { Text("https://example.com/theme.zip") },
+                                supportingText = {
+                                    Text(
+                                        text = "يدعم روابط التليجرام، GitHub Releases، Google Drive أو روابط السيرفرات المباشرة",
+                                        fontSize = 10.sp,
+                                        color = Color(0xFF00E5FF)
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                        }
+                    }
                 }
                 item {
                     OutlinedTextField(
@@ -1374,38 +1532,67 @@ fun AdminThemeEditDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank() && slug.isNotBlank()) {
-                        val themeEntity = ThemeEntity(
-                            id = item?.theme?.id ?: 0L,
-                            companyId = selectedCompanyId,
-                            designerId = selectedDesignerId,
-                            name = name.trim(),
-                            slug = slug.trim(),
-                            description = description.trim(),
-                            coverImageUrl = coverUrl.trim(),
-                            tags = tags.trim(),
-                            featured = isFeatured,
-                            published = isPublished,
-                            views = item?.theme?.views ?: 0,
-                            downloads = item?.theme?.downloads ?: 0
-                        )
-                        val versionEntity = ThemeVersion(
-                            id = item?.latestVersion?.id ?: 0L,
-                            themeId = item?.theme?.id ?: 0L,
-                            version = versionNum.trim(),
-                            downloadUrl = downloadUrl.trim(),
-                            changelog = changelog.trim(),
-                            releaseDate = "September 2026",
-                            published = isPublished
-                        )
-                        val previews = previewUrls.mapIndexed { index, url ->
+                    if (name.isBlank()) {
+                        Toast.makeText(context, if (language == AppLanguage.AR) "يرجى إدخال اسم الثيم أولاً" else "Please enter theme name", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    val validCompanyId = if (selectedCompanyId > 0 && companies.any { it.id == selectedCompanyId }) {
+                        selectedCompanyId
+                    } else {
+                        companies.firstOrNull()?.id ?: 1L
+                    }
+                    val validDesignerId = if (selectedDesignerId > 0 && designers.any { it.id == selectedDesignerId }) {
+                        selectedDesignerId
+                    } else {
+                        designers.firstOrNull()?.id ?: 1L
+                    }
+                    val safeSlug = slug.trim().ifBlank {
+                        name.trim().lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifBlank { "theme-${System.currentTimeMillis() % 10000}" }
+                    }
+                    val themeEntity = ThemeEntity(
+                        id = item?.theme?.id ?: 0L,
+                        companyId = validCompanyId,
+                        designerId = validDesignerId,
+                        name = name.trim(),
+                        slug = safeSlug,
+                        description = description.trim().ifBlank { "High quality custom theme for your phone." },
+                        coverImageUrl = coverUrl.trim().ifBlank { "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800" },
+                        tags = tags.trim(),
+                        featured = isFeatured,
+                        published = isPublished,
+                        views = item?.theme?.views ?: 0,
+                        downloads = item?.theme?.downloads ?: 0
+                    )
+                    val versionEntity = ThemeVersion(
+                        id = item?.latestVersion?.id ?: 0L,
+                        themeId = item?.theme?.id ?: 0L,
+                        version = versionNum.trim().ifBlank { "1.0" },
+                        downloadUrl = downloadUrl.trim().ifBlank { "https://t.me/s18theme" },
+                        changelog = changelog.trim().ifBlank { "Initial release" },
+                        releaseDate = "September 2026",
+                        published = isPublished
+                    )
+                    val previews = if (previewUrls.isNotEmpty()) {
+                        previewUrls.mapIndexed { index, url ->
                             ThemePreview(
                                 themeId = item?.theme?.id ?: 0L,
                                 imageUrl = url.trim(),
                                 sortOrder = index + 1
                             )
                         }
+                    } else {
+                        listOf(
+                            ThemePreview(
+                                themeId = item?.theme?.id ?: 0L,
+                                imageUrl = coverUrl.trim().ifBlank { "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800" },
+                                sortOrder = 1
+                            )
+                        )
+                    }
+                    try {
                         onSave(themeEntity, versionEntity, previews)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "فشل حفظ الثيم: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024))
@@ -1437,38 +1624,138 @@ fun AdminCompaniesManager(
         var compName by remember { mutableStateOf(editingCompany?.name ?: "") }
         var compSlug by remember { mutableStateOf(editingCompany?.slug ?: "") }
         var compDesc by remember { mutableStateOf(editingCompany?.description ?: "") }
+        var compLogoUrl by remember { mutableStateOf(editingCompany?.logoUrl ?: "") }
+
+        val logoPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.PickVisualMedia()
+        ) { uri ->
+            if (uri != null) {
+                val persisted = ThemeImageUtils.persistCompanyLogo(context, uri)
+                compLogoUrl = persisted
+            }
+        }
 
         AlertDialog(
             onDismissRequest = {
                 isAdding = false
                 editingCompany = null
             },
-            title = { Text(if (editingCompany == null) S18Strings.get("add_company", language) else "Edit Company") },
+            title = {
+                Text(
+                    text = if (editingCompany == null)
+                        (if (language == AppLanguage.AR) "إضافة شركة جديدة" else "Add New Company")
+                    else
+                        (if (language == AppLanguage.AR) "تعديل بيانات الشركة" else "Edit Company"),
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = compName,
-                        onValueChange = {
-                            compName = it
-                            if (editingCompany == null) {
-                                compSlug = it.lowercase().replace(" ", "-")
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item {
+                        // Company Logo Section
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF0F172A))
+                                    .border(2.dp, Color(0xFF00E5FF), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (compLogoUrl.isNotBlank()) {
+                                    ThemeImage(
+                                        imageUrl = compLogoUrl,
+                                        contentDescription = "Logo",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Text(
+                                        text = compName.take(2).uppercase().ifBlank { "CO" },
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 20.sp,
+                                        color = Color(0xFF00E5FF)
+                                    )
+                                }
                             }
-                        },
-                        label = { Text("Company Name") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = compSlug,
-                        onValueChange = { compSlug = it },
-                        label = { Text("Slug") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = compDesc,
-                        onValueChange = { compDesc = it },
-                        label = { Text("Description") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        logoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(if (language == AppLanguage.AR) "اختيار لوجو من المعرض" else "Pick Logo", fontSize = 12.sp)
+                                }
+
+                                if (compLogoUrl.isNotBlank()) {
+                                    IconButton(onClick = { compLogoUrl = "" }, modifier = Modifier.size(32.dp)) {
+                                        Icon(Icons.Default.Close, contentDescription = "Remove logo", tint = Color(0xFFEF4444))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = compName,
+                            onValueChange = {
+                                compName = it
+                                if (editingCompany == null) {
+                                    compSlug = it.lowercase().replace(" ", "-").replace(Regex("[^a-z0-9\\-]"), "")
+                                }
+                            },
+                            label = { Text(if (language == AppLanguage.AR) "اسم الشركة" else "Company Name") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = compDesc,
+                            onValueChange = { compDesc = it },
+                            label = { Text(if (language == AppLanguage.AR) "وصف الشركة" else "Description") },
+                            minLines = 2,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = compLogoUrl,
+                            onValueChange = { compLogoUrl = it },
+                            label = { Text(if (language == AppLanguage.AR) "مسار / رابط اللوجو (اختياري)" else "Logo Path / URL") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = compSlug,
+                            onValueChange = { compSlug = it },
+                            label = { Text("Slug") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -1479,7 +1766,8 @@ fun AdminCompaniesManager(
                                 id = editingCompany?.id ?: 0L,
                                 name = compName.trim(),
                                 slug = compSlug.trim(),
-                                description = compDesc.trim()
+                                description = compDesc.trim(),
+                                logoUrl = compLogoUrl.trim()
                             )
                             viewModel.saveCompany(c) {
                                 isAdding = false
@@ -1489,7 +1777,7 @@ fun AdminCompaniesManager(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024))
                 ) {
-                    Text("Save", fontWeight = FontWeight.Bold)
+                    Text(if (language == AppLanguage.AR) "حفظ الشركة" else "Save", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -1515,7 +1803,7 @@ fun AdminCompaniesManager(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${companies.size} Companies",
+                    text = if (language == AppLanguage.AR) "${companies.size} شركة مسجلة" else "${companies.size} Companies",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -1547,17 +1835,58 @@ fun AdminCompaniesManager(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            text = comp.name,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "$themeCount Themes · /${comp.slug}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF00E5FF)
-                        )
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Logo Thumbnail
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF0F172A))
+                                .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (!comp.logoUrl.isNullOrBlank()) {
+                                ThemeImage(
+                                    imageUrl = comp.logoUrl,
+                                    contentDescription = comp.name,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    text = comp.name.take(2).uppercase(),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF00E5FF)
+                                )
+                            }
+                        }
+
+                        Column {
+                            Text(
+                                text = comp.name,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (comp.description.isNotBlank()) {
+                                Text(
+                                    text = comp.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF94A3B8),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Text(
+                                text = "$themeCount Themes · /${comp.slug}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF00E5FF)
+                            )
+                        }
                     }
 
                     Row {
@@ -2323,26 +2652,30 @@ fun AdminWallpapersManager(
                     Button(
                         onClick = {
                             if (wallpaperName.isNotBlank() && wallpaperUrl.isNotBlank()) {
-                                val slug = "wallpaper-${System.currentTimeMillis()}"
-                                val newTheme = ThemeEntity(
-                                    name = wallpaperName,
-                                    slug = slug,
-                                    description = "High quality smartphone wallpaper published via S18 Admin.",
-                                    companyId = 1L,
-                                    designerId = 1L,
-                                    coverImageUrl = wallpaperUrl,
-                                    tags = if (wallpaperTags.contains("wallpaper", ignoreCase = true)) wallpaperTags else "$wallpaperTags, Wallpaper, خلفية",
-                                    published = true,
-                                    featured = true
-                                )
-                                viewModel.saveTheme(theme = newTheme) {
-                                    Toast.makeText(context, "تم نشر الخلفية بنجاح!", Toast.LENGTH_SHORT).show()
-                                    showAddWallpaperDialog = false
-                                    wallpaperName = ""
-                                    wallpaperUrl = ""
+                                try {
+                                    val slug = "wallpaper-${System.currentTimeMillis()}"
+                                    val newTheme = ThemeEntity(
+                                        name = wallpaperName.trim(),
+                                        slug = slug,
+                                        description = "High quality smartphone wallpaper published via S18 Admin.",
+                                        companyId = 1L,
+                                        designerId = 1L,
+                                        coverImageUrl = wallpaperUrl.trim(),
+                                        tags = if (wallpaperTags.contains("wallpaper", ignoreCase = true)) wallpaperTags.trim() else "$wallpaperTags, Wallpaper, خلفية".trim(),
+                                        published = true,
+                                        featured = true
+                                    )
+                                    viewModel.saveTheme(theme = newTheme) {
+                                        Toast.makeText(context, "تم نشر الخلفية بنجاح!", Toast.LENGTH_SHORT).show()
+                                        showAddWallpaperDialog = false
+                                        wallpaperName = ""
+                                        wallpaperUrl = ""
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "فشل نشر الخلفية: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                                 }
                             } else {
-                                Toast.makeText(context, "يرجى كتابة الاسم وتحديد الصورة", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "يرجى كتابة الاسم وتحديد الصورة أولاً", Toast.LENGTH_SHORT).show()
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024))
@@ -2684,12 +3017,12 @@ fun AdminSubAdminsManager(
                             }
                             Column {
                                 Text(
-                                    text = if (language == AppLanguage.AR) "لوحة تحكم السوبر أدمن" else "Super Admin Portal",
+                                    text = if (language == AppLanguage.AR) "إدارة المشرفين والأدمن" else "Admins Management",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
                                     color = Color.White
                                 )
                                 Text(
-                                    text = if (language == AppLanguage.AR) "إدارة المشرفين الفرعيين بالحسابات الوهمية والصلاحيات" else "Manage sub-admins with custom accounts & roles",
+                                    text = if (language == AppLanguage.AR) "إضافة وإدارة المشرفين والصلاحيات وحسابات الدخول" else "Manage sub-admins, roles & credentials",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF94A3B8)
                                 )
@@ -2702,7 +3035,7 @@ fun AdminSubAdminsManager(
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.4f))
                         ) {
                             Text(
-                                text = "SUPER ADMIN",
+                                text = "ADMIN MANAGEMENT",
                                 color = Color(0xFF00E5FF),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black,
