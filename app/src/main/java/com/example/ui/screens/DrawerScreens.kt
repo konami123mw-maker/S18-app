@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -349,9 +351,19 @@ fun SupportScreen(
 ) {
     val language by viewModel.language.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val allMessages by viewModel.allSupportMessages.collectAsStateWithLifecycle()
+
+    var supportTab by remember { mutableIntStateOf(0) } // 0: New Ticket, 1: My Tickets & Replies
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var subject by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("عام") }
     var message by remember { mutableStateOf("") }
+    var isSending by remember { mutableStateOf(false) }
+
+    val isAr = language == AppLanguage.AR
+    val categories = if (isAr) listOf("عام", "مشكلة تحميل", "طلب ثيم", "اقتراح", "أخرى")
+    else listOf("General", "Download Issue", "Theme Request", "Suggestion", "Other")
 
     Column(modifier = modifier.fillMaxSize().testTag("support_screen")) {
         StandardTopBar(
@@ -359,122 +371,330 @@ fun SupportScreen(
             onBack = { viewModel.navigateTo(Screen.Home) }
         )
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        // Sub-tabs: Send Ticket vs View Tickets
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = if (language == AppLanguage.AR) "فريق الدعم الفني S18_THEME" else "S18_THEME Support Team",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color(0xFF00E5FF)
-                        )
-                        Text(
-                            text = if (language == AppLanguage.AR) "نسعد دائماً بمساعدتك والإجابة عن استفساراتك حول تثبيت وتطبيق الثيمات أو واجهت أي مشاكل في التحميل." else "We are always here to help with any inquiries, installation guides, or download troubleshooting.",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            Button(
+                onClick = { supportTab = 0 },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (supportTab == 0) Color(0xFF00E5FF) else Color.Transparent,
+                    contentColor = if (supportTab == 0) Color(0xFF031024) else MaterialTheme.colorScheme.onSurface
+                ),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(if (isAr) "إرسال تذكرة" else "New Ticket", fontWeight = FontWeight.Bold)
             }
 
-            item {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(if (language == AppLanguage.AR) "الاسم" else "Your Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text(if (language == AppLanguage.AR) "البريد الإلكتروني" else "Your Email") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = message,
-                    onValueChange = { message = it },
-                    label = { Text(if (language == AppLanguage.AR) "الرسالة أو الاستفسار" else "Message / Inquiry") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 4
-                )
-            }
-
-            item {
-                Button(
-                    onClick = {
-                        if (name.isNotBlank() && message.isNotBlank()) {
-                            Toast.makeText(context, if (language == AppLanguage.AR) "تم إرسال رسالتك بنجاح! سنتواصل معك قريباً" else "Message sent! We'll be in touch soon.", Toast.LENGTH_LONG).show()
-                            name = ""
-                            email = ""
-                            message = ""
-                        } else {
-                            Toast.makeText(context, if (language == AppLanguage.AR) "يرجى كتابة الاسم والرسالة" else "Please fill out your name and message", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (language == AppLanguage.AR) "إرسال الرسالة" else "Submit Message", fontWeight = FontWeight.Bold)
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = { supportTab = 1 },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (supportTab == 1) Color(0xFF00E5FF) else Color.Transparent,
+                    contentColor = if (supportTab == 1) Color(0xFF031024) else MaterialTheme.colorScheme.onSurface
+                ),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
-                    text = if (language == AppLanguage.AR) "قنوات التواصل المباشرة" else "Direct Channels",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = if (isAr) "تذاكري (${allMessages.size})" else "My Tickets (${allMessages.size})",
+                    fontWeight = FontWeight.Bold
                 )
             }
+        }
 
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/s18theme"))
-                            context.startActivity(intent)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF229ED9)),
-                        modifier = Modifier.weight(1f)
+        if (supportTab == 0) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     ) {
-                        Text("Telegram", fontWeight = FontWeight.Bold)
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = if (isAr) "مركز الدعم والتواصل المباشر" else "S18_THEME Support Center",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color(0xFF00E5FF)
+                            )
+                            Text(
+                                text = if (isAr) "نسعد بمساعدتك والإجابة على أي استفسار أو مشكلة في تثبيت الثيمات والخطوط، وسيقوم فريق الإدارة بالرد عليك مباشرة." else "We are here to assist you. Submit a ticket and our administrative team will reply directly.",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+                }
 
+                // Category Chips
+                item {
+                    Text(
+                        text = if (isAr) "تصنيف الطلب" else "Category",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        categories.forEach { cat ->
+                            val isSelected = selectedCategory == cat
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) Color(0xFF00E5FF).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFF00E5FF) else Color.Transparent),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { selectedCategory = cat }
+                            ) {
+                                Text(
+                                    text = cat,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(if (isAr) "الاسم أو المعرف" else "Your Name") },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text(if (isAr) "البريد الإلكتروني أو تليجرام" else "Email / Telegram handle") },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = subject,
+                        onValueChange = { subject = it },
+                        label = { Text(if (isAr) "موضوع التذكرة" else "Subject") },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = message,
+                        onValueChange = { message = it },
+                        label = { Text(if (isAr) "تفاصيل الرسالة أو المشكلة" else "Message / Details") },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 4
+                    )
+                }
+
+                item {
                     Button(
                         onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("mailto:support@s18theme.com"))
-                            context.startActivity(intent)
+                            if (name.isNotBlank() && message.isNotBlank()) {
+                                isSending = true
+                                viewModel.sendSupportMessage(
+                                    senderName = name.trim(),
+                                    senderEmail = email.trim(),
+                                    category = selectedCategory,
+                                    subject = subject.trim().ifBlank { if (isAr) "استفسار دعم" else "Support Ticket" },
+                                    message = message.trim(),
+                                    onComplete = { success ->
+                                        isSending = false
+                                        if (success) {
+                                            Toast.makeText(context, if (isAr) "تم إرسال تذكرتك بنجاح! يمكنك متابعتها في تبويب 'تذاكري'" else "Ticket submitted successfully!", Toast.LENGTH_LONG).show()
+                                            name = ""
+                                            email = ""
+                                            subject = ""
+                                            message = ""
+                                            supportTab = 1
+                                        }
+                                    }
+                                )
+                            } else {
+                                Toast.makeText(context, if (isAr) "يرجى كتابة الاسم والرسالة" else "Please fill out your name and message", Toast.LENGTH_SHORT).show()
+                            }
                         },
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-                        modifier = Modifier.weight(1f)
+                        enabled = !isSending,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024)),
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
                     ) {
-                        Text("Email", fontWeight = FontWeight.Bold)
+                        Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isAr) "إرسال التذكرة الآن" else "Submit Ticket", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = if (isAr) "قنوات التواصل المباشرة" else "Direct Channels",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/s18theme"))
+                                context.startActivity(intent)
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF229ED9)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Telegram", fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("mailto:support@s18theme.com"))
+                                context.startActivity(intent)
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Email", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        } else {
+            // Tab 1: My Tickets & Replies
+            if (allMessages.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(imageVector = Icons.Default.Email, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(48.dp))
+                        Text(if (isAr) "لا توجد تذاكر دعم مسجلة حتى الآن" else "No support tickets yet", fontWeight = FontWeight.Bold)
+                        Text(if (isAr) "يمكنك إرسال استفسار أو مشكلة في تبويب 'إرسال تذكرة'" else "Submit an inquiry in the 'New Ticket' tab.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(allMessages) { ticket ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = ticket.subject,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    val isReplied = ticket.status == "REPLIED"
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isReplied) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFFF59E0B).copy(alpha = 0.2f)
+                                    ) {
+                                        Text(
+                                            text = if (isReplied) (if (isAr) "تم الرد" else "Replied") else (if (isAr) "قيد المراجعة" else "Pending"),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isReplied) Color(0xFF10B981) else Color(0xFFF59E0B)
+                                        )
+                                    }
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(text = ticket.senderName, fontSize = 12.sp, color = Color(0xFF00E5FF))
+                                    Text(text = "•", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
+                                    Text(text = ticket.category, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+
+                                Text(
+                                    text = ticket.message,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                                    lineHeight = 20.sp
+                                )
+
+                                // Admin Reply Box if present
+                                if (!ticket.adminReply.isNullOrBlank()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color(0xFF00E5FF).copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                            .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                            .padding(12.dp)
+                                    ) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(14.dp))
+                                                Text(
+                                                    text = if (isAr) "رد فريق إدارة S18_THEME" else "S18_THEME Admin Reply",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 12.sp,
+                                                    color = Color(0xFF00E5FF)
+                                                )
+                                            }
+                                            Text(
+                                                text = ticket.adminReply,
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                lineHeight = 19.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

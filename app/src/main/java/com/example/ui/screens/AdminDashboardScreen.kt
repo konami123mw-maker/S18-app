@@ -52,9 +52,21 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsKabaddi
 import androidx.compose.material.icons.filled.SupervisorAccount
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Publish
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import com.example.data.ActivityLog
+import com.example.data.MediaItem
+import com.example.data.SupportMessage
+import com.example.data.TrashItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,12 +87,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.example.data.sizeFormatted
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -247,6 +262,30 @@ fun AdminDashboardScreen(
                     language = language
                 )
                 AdminTab.COLLECTIONS -> AdminCollectionsManager(
+                    viewModel = viewModel,
+                    language = language
+                )
+                AdminTab.PUBLISH_STUDIO -> ThemePublishingStudio(
+                    viewModel = viewModel,
+                    onDismiss = { activeTab = AdminTab.THEMES }
+                )
+                AdminTab.SUPPORT_MESSAGES -> AdminSupportManager(
+                    viewModel = viewModel,
+                    language = language
+                )
+                AdminTab.CUSTOMIZATION -> AdminCustomizationStudio(
+                    viewModel = viewModel,
+                    language = language
+                )
+                AdminTab.MEDIA_LIBRARY -> AdminMediaLibrary(
+                    viewModel = viewModel,
+                    language = language
+                )
+                AdminTab.ACTIVITY_LOGS -> AdminActivityLogs(
+                    viewModel = viewModel,
+                    language = language
+                )
+                AdminTab.TRASH -> AdminTrashManager(
                     viewModel = viewModel,
                     language = language
                 )
@@ -656,39 +695,51 @@ fun AdminTabsRow(
 }
 
 fun getTabTitle(tab: AdminTab, language: AppLanguage): String {
-    val key = when (tab) {
-        AdminTab.DASHBOARD -> "dashboard"
-        AdminTab.THEMES -> "themes"
-        AdminTab.WALLPAPERS -> "wallpapers"
-        AdminTab.COMPANIES -> "companies"
-        AdminTab.DESIGNERS -> "designers"
-        AdminTab.COMMENTS -> "comments"
-        AdminTab.ANALYTICS -> "analytics"
-        AdminTab.UPDATES -> "updates"
-        AdminTab.BACKUPS -> "backups"
-        AdminTab.SETTINGS -> "settings"
-        AdminTab.SUB_ADMINS -> "sub_admins"
-        AdminTab.BATTLES -> "theme_battles"
-        AdminTab.COLLECTIONS -> "collections"
+    val isAr = language == AppLanguage.AR
+    return when (tab) {
+        AdminTab.DASHBOARD -> if (isAr) "لوحة التحكم" else "Dashboard"
+        AdminTab.PUBLISH_STUDIO -> if (isAr) "استوديو النشر" else "Publish Studio"
+        AdminTab.THEMES -> if (isAr) "الثيمات" else "Themes"
+        AdminTab.WALLPAPERS -> if (isAr) "الخلفيات" else "Wallpapers"
+        AdminTab.COMPANIES -> if (isAr) "الشركات" else "Brands"
+        AdminTab.DESIGNERS -> if (isAr) "المصممون" else "Designers"
+        AdminTab.COMMENTS -> if (isAr) "التعليقات" else "Comments"
+        AdminTab.SUB_ADMINS -> if (isAr) "المشرفون" else "Sub-Admins"
+        AdminTab.SUPPORT_MESSAGES -> if (isAr) "رسائل الدعم" else "Support Messages"
+        AdminTab.CUSTOMIZATION -> if (isAr) "تخصيص الواجهة" else "Customization"
+        AdminTab.BATTLES -> if (isAr) "معارك الثيمات" else "Theme Battles"
+        AdminTab.COLLECTIONS -> if (isAr) "المجموعات" else "Collections"
+        AdminTab.ANALYTICS -> if (isAr) "الإحصائيات" else "Analytics"
+        AdminTab.MEDIA_LIBRARY -> if (isAr) "مكتبة الوسائط" else "Media Library"
+        AdminTab.ACTIVITY_LOGS -> if (isAr) "سجل النشاطات" else "Activity Logs"
+        AdminTab.TRASH -> if (isAr) "سلة المحذوفات" else "Trash"
+        AdminTab.UPDATES -> if (isAr) "التحديثات" else "Updates"
+        AdminTab.BACKUPS -> if (isAr) "النسخ الاحتياطي" else "Backups"
+        AdminTab.SETTINGS -> if (isAr) "الإعدادات" else "Settings"
     }
-    return S18Strings.get(key, language)
 }
 
 fun getTabIcon(tab: AdminTab): ImageVector {
     return when (tab) {
         AdminTab.DASHBOARD -> Icons.Default.Dashboard
+        AdminTab.PUBLISH_STUDIO -> Icons.Default.Publish
         AdminTab.THEMES -> Icons.Default.Palette
         AdminTab.WALLPAPERS -> Icons.Default.PhotoLibrary
-        AdminTab.COMPANIES -> Icons.Default.Settings
+        AdminTab.COMPANIES -> Icons.Default.Business
         AdminTab.DESIGNERS -> Icons.Default.Person
         AdminTab.COMMENTS -> Icons.Default.Comment
+        AdminTab.SUB_ADMINS -> Icons.Default.SupervisorAccount
+        AdminTab.SUPPORT_MESSAGES -> Icons.Default.Email
+        AdminTab.CUSTOMIZATION -> Icons.Default.Tune
+        AdminTab.BATTLES -> Icons.Default.SportsKabaddi
+        AdminTab.COLLECTIONS -> Icons.Default.Collections
         AdminTab.ANALYTICS -> Icons.Default.Analytics
+        AdminTab.MEDIA_LIBRARY -> Icons.Default.FolderOpen
+        AdminTab.ACTIVITY_LOGS -> Icons.Default.History
+        AdminTab.TRASH -> Icons.Default.Delete
         AdminTab.UPDATES -> Icons.Default.Update
         AdminTab.BACKUPS -> Icons.Default.Backup
         AdminTab.SETTINGS -> Icons.Default.Settings
-        AdminTab.SUB_ADMINS -> Icons.Default.SupervisorAccount
-        AdminTab.BATTLES -> Icons.Default.SportsKabaddi
-        AdminTab.COLLECTIONS -> Icons.Default.Collections
     }
 }
 
@@ -856,22 +907,14 @@ fun AdminThemesManager(
     var isAddingNew by remember { mutableStateOf(false) }
     var themeToDelete by remember { mutableStateOf<ThemeEntity?>(null) }
 
-    // Dialog for Add / Edit
+    // Modern Liquid Glass Theme Publishing Studio for Add / Edit
     if (isAddingNew || editingThemeItem != null) {
-        AdminThemeEditDialog(
-            item = editingThemeItem,
-            companies = companies,
-            designers = designers,
-            language = language,
+        ThemePublishingStudio(
+            viewModel = viewModel,
+            themeId = editingThemeItem?.theme?.id,
             onDismiss = {
                 isAddingNew = false
                 editingThemeItem = null
-            },
-            onSave = { theme, version, previews ->
-                viewModel.saveTheme(theme, version, previews) {
-                    isAddingNew = false
-                    editingThemeItem = null
-                }
             }
         )
     }
@@ -4229,4 +4272,707 @@ fun AdminCollectionEditDialog(
             }
         }
     )
+}
+
+// -------------------------------------------------------------
+// 14. Support Messages Manager (Tickets & Direct Replies)
+// -------------------------------------------------------------
+@Composable
+fun AdminSupportManager(
+    viewModel: ThemeViewModel,
+    language: AppLanguage
+) {
+    val messages by viewModel.allSupportMessages.collectAsStateWithLifecycle()
+    val isAr = language == AppLanguage.AR
+    var filterStatus by remember { mutableStateOf("ALL") }
+    var replyingToId by remember { mutableStateOf<Long?>(null) }
+    var replyText by remember { mutableStateOf("") }
+
+    val filteredMessages = remember(messages, filterStatus) {
+        when (filterStatus) {
+            "PENDING" -> messages.filter { it.status == "PENDING" }
+            "REPLIED" -> messages.filter { it.status == "REPLIED" }
+            else -> messages
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            // Header with filters
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isAr) "مركز تذاكر الدعم الفني (${messages.size})" else "Support Tickets (${messages.size})",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        "ALL" to (if (isAr) "الكل (${messages.size})" else "All (${messages.size})"),
+                        "PENDING" to (if (isAr) "قيد الانتظار (${messages.count { it.status == "PENDING" }})" else "Pending (${messages.count { it.status == "PENDING" }})"),
+                        "REPLIED" to (if (isAr) "تم الرد (${messages.count { it.status == "REPLIED" }})" else "Replied (${messages.count { it.status == "REPLIED" }})")
+                    ).forEach { (status, label) ->
+                        val isSelected = filterStatus == status
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) Color(0xFF00E5FF).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFF00E5FF) else Color.Transparent),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { filterStatus = status }
+                        ) {
+                            Text(
+                                text = label,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (filteredMessages.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(imageVector = Icons.Default.Email, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(48.dp))
+                        Text(if (isAr) "لا توجد رسائل دعم في هذا التصنيف" else "No messages in this category", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        } else {
+            items(filteredMessages) { msg ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = msg.subject,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val isReplied = msg.status == "REPLIED"
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isReplied) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFFF59E0B).copy(alpha = 0.2f)
+                            ) {
+                                Text(
+                                    text = if (isReplied) (if (isAr) "تم الرد" else "Replied") else (if (isAr) "قيد المراجعة" else "Pending"),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isReplied) Color(0xFF10B981) else Color(0xFFF59E0B)
+                                )
+                            }
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(text = msg.senderName, fontSize = 12.sp, color = Color(0xFF00E5FF), fontWeight = FontWeight.SemiBold)
+                            if (msg.senderEmail.isNotBlank()) {
+                                Text(text = "(${msg.senderEmail})", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(text = "•", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
+                            Text(text = msg.category, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+
+                        Text(
+                            text = msg.message,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                            lineHeight = 20.sp
+                        )
+
+                        // Existing Admin Reply
+                        if (!msg.adminReply.isNullOrBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFF00E5FF).copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                    .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = if (isAr) "الرد المسجل:" else "Registered Reply:",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF00E5FF)
+                                    )
+                                    Text(
+                                        text = msg.adminReply,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        lineHeight = 19.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        // Reply action editor
+                        if (replyingToId == msg.id) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = replyText,
+                                    onValueChange = { replyText = it },
+                                    label = { Text(if (isAr) "اكتب رد الإدارة هنا..." else "Write admin reply...") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 3,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    TextButton(onClick = { replyingToId = null }) {
+                                        Text(if (isAr) "إلغاء" else "Cancel")
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = {
+                                            if (replyText.isNotBlank()) {
+                                                viewModel.replyToSupportMessage(msg.id, replyText.trim())
+                                                replyingToId = null
+                                                replyText = ""
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024))
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(if (isAr) "إرسال الرد" else "Send Reply", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(
+                                    onClick = { viewModel.deleteSupportMessage(msg) },
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                OutlinedButton(
+                                    onClick = {
+                                        replyingToId = msg.id
+                                        replyText = msg.adminReply ?: ""
+                                    },
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(if (msg.adminReply.isNullOrBlank()) (if (isAr) "الرد على التذكرة" else "Reply") else (if (isAr) "تعديل الرد" else "Edit Reply"), fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// 15. App Customization Studio (Theme Visuals & Styling)
+// -------------------------------------------------------------
+@Composable
+fun AdminCustomizationStudio(
+    viewModel: ThemeViewModel,
+    language: AppLanguage
+) {
+    val isAr = language == AppLanguage.AR
+    var selectedAccent by remember { mutableStateOf(Color(0xFF00E5FF)) }
+    var appTitleInput by remember { mutableStateOf("S18_THEME") }
+    var blurEnabled by remember { mutableStateOf(true) }
+    var roundedRadius by remember { mutableIntStateOf(16) }
+    var showSuccessToast by remember { mutableStateOf(false) }
+
+    val accentPresets = listOf(
+        Color(0xFF00E5FF) to "Electric Cyan",
+        Color(0xFF10B981) to "Emerald Green",
+        Color(0xFF8B5CF6) to "Neon Purple",
+        Color(0xFFF97316) to "Sunset Orange",
+        Color(0xFFEF4444) to "Crimson Red"
+    )
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = if (isAr) "استوديو تخصيص واجهة التطبيق" else "App Visual Customization Studio",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color(0xFF00E5FF)
+                    )
+                    Text(
+                        text = if (isAr) "تحكم في النمط البصري لمظهر Liquid Glass، وتدرجات ألوان التمييز، وزوايا الحواف لجميع بطاقات الثيمات." else "Control the Liquid Glass visual theme, accent gradients, and corner radius across the app.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Color Accent Picker
+        item {
+            Text(
+                text = if (isAr) "لون التمييز الأساسي (Accent Color)" else "Primary Accent Color",
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                accentPresets.forEach { (color, name) ->
+                    val isSelected = selectedAccent == color
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .border(
+                                width = if (isSelected) 3.dp else 1.dp,
+                                color = if (isSelected) Color.White else Color.Transparent,
+                                shape = CircleShape
+                            )
+                            .clickable { selectedAccent = color },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+        }
+
+        // App Title Customization
+        item {
+            OutlinedTextField(
+                value = appTitleInput,
+                onValueChange = { appTitleInput = it },
+                label = { Text(if (isAr) "اسم التطبيق المعروض" else "App Display Name") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+
+        // Corner Radius options
+        item {
+            Text(
+                text = if (isAr) "زاوية استدارة البطاقات (Corner Radius)" else "Card Corner Radius",
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(12, 16, 20).forEach { radius ->
+                    val isSelected = roundedRadius == radius
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isSelected) Color(0xFF00E5FF).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFF00E5FF) else Color.Transparent),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { roundedRadius = radius }
+                    ) {
+                        Text(
+                            text = "${radius}dp",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+
+        // Glassmorphism Blur Toggle
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = if (isAr) "تأثير الزجاج الشفاف (Liquid Glass)" else "Liquid Glass Transparency",
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (isAr) "تفعيل الشفافية والحدود المضيئة للبطاقات" else "Enable frosted glass and glowing borders",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                androidx.compose.material3.Switch(
+                    checked = blurEnabled,
+                    onCheckedChange = { blurEnabled = it }
+                )
+            }
+        }
+
+        // Save Button
+        item {
+            Button(
+                onClick = {
+                    showSuccessToast = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024))
+            ) {
+                Icon(imageVector = Icons.Default.Check, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isAr) "حفظ التخصيصات وتطبيقها" else "Save Customizations", fontWeight = FontWeight.Bold)
+            }
+            if (showSuccessToast) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = if (isAr) "✓ تم حفظ التخصيصات بنجاح!" else "✓ Settings saved successfully!",
+                    color = Color(0xFF10B981),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// 16. Media Library Manager (Storage & Assets)
+// -------------------------------------------------------------
+@Composable
+fun AdminMediaLibrary(
+    viewModel: ThemeViewModel,
+    language: AppLanguage
+) {
+    val mediaItems by viewModel.allMediaItems.collectAsStateWithLifecycle()
+    val isAr = language == AppLanguage.AR
+    var selectedTypeFilter by remember { mutableStateOf("ALL") }
+
+    val filtered = remember(mediaItems, selectedTypeFilter) {
+        if (selectedTypeFilter == "ALL") mediaItems
+        else mediaItems.filter { it.fileType == selectedTypeFilter }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = if (isAr) "مكتبة وسائط وملفات الثيمات (${mediaItems.size})" else "Media & Files Library (${mediaItems.size})",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        "ALL" to (if (isAr) "الكل" else "All"),
+                        "COVER_IMAGE" to (if (isAr) "أغلفة" else "Covers"),
+                        "PREVIEW_IMAGE" to (if (isAr) "معاينات" else "Previews"),
+                        "THEME_PACKAGE" to (if (isAr) "حزم الملفات" else "Packages")
+                    ).forEach { (type, label) ->
+                        val isSelected = selectedTypeFilter == type
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) Color(0xFF00E5FF).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFF00E5FF) else Color.Transparent),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { selectedTypeFilter = type }
+                        ) {
+                            Text(
+                                text = label,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (filtered.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(if (isAr) "لا توجد ملفات في المكتبة" else "No files in the library", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        } else {
+            items(filtered) { item ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(Color(0xFF00E5FF).copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (item.fileType == "THEME_PACKAGE") Icons.Default.FolderOpen else Icons.Default.Image,
+                                    contentDescription = null,
+                                    tint = Color(0xFF00E5FF),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = item.fileName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${item.sizeFormatted} • ${item.fileType}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { viewModel.deleteMediaItem(item) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// 17. Activity Logs Manager (Auditing & History)
+// -------------------------------------------------------------
+@Composable
+fun AdminActivityLogs(
+    viewModel: ThemeViewModel,
+    language: AppLanguage
+) {
+    val logs by viewModel.allActivityLogs.collectAsStateWithLifecycle()
+    val isAr = language == AppLanguage.AR
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isAr) "سجل نشاطات الإدارة (${logs.size})" else "Admin Activity Logs (${logs.size})",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                if (logs.isNotEmpty()) {
+                    TextButton(onClick = { viewModel.clearActivityLogs() }) {
+                        Text(if (isAr) "مسح السجل" else "Clear All", color = Color(0xFFEF4444), fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        if (logs.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(if (isAr) "السجل فارغ حالياً" else "Logs are empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        } else {
+            items(logs) { log ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = log.action,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Color(0xFF00E5FF)
+                            )
+                            Text(
+                                text = log.adminName,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = log.details,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// 18. Trash & Recycle Bin Manager
+// -------------------------------------------------------------
+@Composable
+fun AdminTrashManager(
+    viewModel: ThemeViewModel,
+    language: AppLanguage
+) {
+    val trashItems by viewModel.allTrashItems.collectAsStateWithLifecycle()
+    val isAr = language == AppLanguage.AR
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isAr) "سلة المحذوفات (${trashItems.size})" else "Trash Bin (${trashItems.size})",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                if (trashItems.isNotEmpty()) {
+                    Button(
+                        onClick = { viewModel.emptyTrash() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(if (isAr) "تفريغ السلة" else "Empty Trash", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        if (trashItems.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(if (isAr) "سلة المحذوفات فارغة" else "Trash bin is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        } else {
+            items(trashItems) { item ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = item.title, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(text = "${item.itemType} • ID: ${item.originalId}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+
+                        IconButton(
+                            onClick = { viewModel.deleteTrashItem(item) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Permanent Delete", tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

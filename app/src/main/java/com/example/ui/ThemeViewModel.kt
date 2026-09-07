@@ -7,20 +7,27 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.ActivityLog
 import com.example.data.AppDatabase
+import com.example.data.BetaTester
 import com.example.data.CollectionEntity
 import com.example.data.Comment
 import com.example.data.Company
 import com.example.data.Designer
+import com.example.data.MediaItem
 import com.example.data.NotificationItem
+import com.example.data.ReactionCountResult
 import com.example.data.SubAdmin
+import com.example.data.SupportMessage
 import com.example.data.ThemeBattle
 import com.example.data.ThemeEntity
 import com.example.data.ThemeFullItem
 import com.example.data.ThemePreview
 import com.example.data.ThemeRating
+import com.example.data.ThemeReaction
 import com.example.data.ThemeRepository
 import com.example.data.ThemeVersion
+import com.example.data.TrashItem
 import com.example.util.ThemeDownloader
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,10 +59,14 @@ sealed class Screen {
     data object RateApp : Screen()
     data object Profile : Screen()
     data object DeviceCompatibilityGuide : Screen()
+    data class PublishStudio(val themeId: Long? = null) : Screen()
+    data object S18Labs : Screen()
+    data object CustomizationStudio : Screen()
+    data object MostInteracted : Screen()
 }
 
 enum class AdminTab {
-    DASHBOARD, THEMES, WALLPAPERS, COMPANIES, DESIGNERS, COMMENTS, SUB_ADMINS, BATTLES, COLLECTIONS, ANALYTICS, UPDATES, BACKUPS, SETTINGS
+    DASHBOARD, THEMES, PUBLISH_STUDIO, WALLPAPERS, COMPANIES, DESIGNERS, COMMENTS, SUB_ADMINS, SUPPORT_MESSAGES, CUSTOMIZATION, BATTLES, COLLECTIONS, ANALYTICS, MEDIA_LIBRARY, ACTIVITY_LOGS, TRASH, UPDATES, BACKUPS, SETTINGS
 }
 
 class ThemeViewModel(application: Application) : AndroidViewModel(application) {
@@ -186,6 +197,21 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val favoriteThemeIds: StateFlow<List<Long>> = repository.favoriteThemeIds
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allSupportMessages: StateFlow<List<SupportMessage>> = repository.allSupportMessages
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allActivityLogs: StateFlow<List<ActivityLog>> = repository.allActivityLogs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allBetaTesters: StateFlow<List<BetaTester>> = repository.allBetaTesters
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allTrashItems: StateFlow<List<TrashItem>> = repository.allTrashItems
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allMediaItems: StateFlow<List<MediaItem>> = repository.allMediaItems
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Mood-Based Discovery State
@@ -696,6 +722,158 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val isCurrently = isFollowingDesigner(designerId).firstOrNull() ?: false
             toggleFollowDesigner(designerId, isCurrently)
+        }
+    }
+
+    // --- Real Room Reactions System (15 emojis supported) ---
+    fun getReactionsForTheme(themeId: Long): Flow<List<ReactionCountResult>> =
+        repository.getReactionsForTheme(themeId)
+
+    fun getUserReactionForTheme(themeId: Long): Flow<String?> =
+        repository.getUserReactionForTheme(themeId, _visitorId.value)
+
+    fun getTotalReactionsForTheme(themeId: Long): Flow<Int> =
+        repository.getTotalReactionsForTheme(themeId)
+
+    fun toggleReaction(themeId: Long, emoji: String) {
+        viewModelScope.launch {
+            repository.toggleReaction(themeId, emoji, _visitorId.value)
+        }
+    }
+
+    // --- Support & Direct Messaging ---
+    fun sendSupportMessage(
+        senderName: String,
+        senderEmail: String,
+        category: String,
+        subject: String,
+        message: String,
+        onComplete: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val id = repository.sendSupportMessage(senderName, senderEmail, category, subject, message)
+            if (id > 0) {
+                _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم إرسال رسالتك بنجاح! سيتم الرد عليك قريباً" else "Message sent! We'll reply soon."
+                onComplete(true)
+            } else {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun replySupportMessage(id: Long, reply: String, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.replySupportMessage(id, reply)
+            logAdminAction("Support Reply", "Replied to ticket #$id")
+            _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم إرسال الرد بنجاح" else "Reply sent successfully"
+            onComplete()
+        }
+    }
+
+    fun deleteSupportMessage(message: SupportMessage) {
+        viewModelScope.launch {
+            repository.deleteSupportMessage(message)
+            _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم حذف الرسالة" else "Message deleted"
+        }
+    }
+
+    // --- Activity Log (Audit Trail) ---
+    fun logAdminAction(action: String, details: String) {
+        viewModelScope.launch {
+            val actor = _currentSubAdmin.value?.displayName ?: "Super Admin"
+            repository.logAction(actor, action, details)
+        }
+    }
+
+    fun clearActivityLogs() {
+        viewModelScope.launch {
+            repository.clearActivityLogs()
+            _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم مسح سجل النشاطات" else "Activity log cleared"
+        }
+    }
+
+    // --- Beta Testers (S18 Labs) ---
+    fun registerBetaTester(name: String, email: String, deviceModel: String, feedback: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val id = repository.registerBetaTester(name, email, deviceModel, feedback)
+            if (id > 0) {
+                _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم تسجيلك في البرنامج التجريبي بنجاح!" else "Registered in beta program!"
+                onComplete(true)
+            } else {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deleteBetaTester(tester: BetaTester) {
+        viewModelScope.launch {
+            repository.deleteBetaTester(tester)
+        }
+    }
+
+    // --- Trash System (Soft Delete & Restore) ---
+    fun moveToTrash(itemType: String, originalId: Long, title: String, details: String = "") {
+        viewModelScope.launch {
+            repository.moveToTrash(itemType, originalId, title, details)
+            logAdminAction("Trash", "Moved $itemType #$originalId ($title) to trash")
+            _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم نقل العنصر إلى سلة المحذوفات" else "Moved to trash"
+        }
+    }
+
+    fun deleteTrashItem(item: TrashItem) {
+        viewModelScope.launch {
+            repository.deleteTrashItem(item)
+            logAdminAction("Permanent Delete", "Deleted ${item.itemType} '${item.title}' permanently")
+            _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم الحذف النهائي" else "Permanently deleted"
+        }
+    }
+
+    fun emptyTrash() {
+        viewModelScope.launch {
+            repository.emptyTrash()
+            logAdminAction("Empty Trash", "Emptied all trash items")
+            _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم تفريغ سلة المحذوفات" else "Trash emptied"
+        }
+    }
+
+    // --- Media Items ---
+    fun addMediaItem(fileName: String, fileUri: String, fileType: String, fileSize: Long, title: String) {
+        viewModelScope.launch {
+            repository.addMediaItem(fileName, fileUri, fileType, fileSize, title)
+            logAdminAction("Upload Media", "Added $fileName ($fileType)")
+        }
+    }
+
+    fun deleteMediaItem(item: MediaItem) {
+        viewModelScope.launch {
+            repository.deleteMediaItem(item)
+            logAdminAction("Delete Media", "Deleted ${item.fileName}")
+            _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم حذف الملف من المكتبة" else "Deleted media item"
+        }
+    }
+
+    // --- Theme Publishing Studio Support ---
+    fun saveFullTheme(
+        theme: ThemeEntity,
+        version: ThemeVersion? = null,
+        previews: List<ThemePreview>? = null,
+        onComplete: (Long) -> Unit = {}
+    ) {
+        saveTheme(theme, version, previews, onComplete)
+    }
+
+    // --- Support Messages Reply Alias ---
+    fun replyToSupportMessage(id: Long, reply: String, onComplete: () -> Unit = {}) {
+        replySupportMessage(id, reply, onComplete)
+    }
+
+    fun resetSubAdminPin(subAdmin: SubAdmin, newPin: String, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            val updated = subAdmin.copy(pin = newPin)
+            repository.saveSubAdmin(updated)
+            logAdminAction("Reset PIN", "Reset PIN for sub-admin ${subAdmin.displayName}")
+            _feedbackMessage.value = if (_language.value == AppLanguage.AR) "تم تحديث كلمة المرور / PIN" else "PIN updated"
+            onComplete()
         }
     }
 }

@@ -26,9 +26,15 @@ import kotlinx.coroutines.launch
         FavoriteRecord::class,
         BattleVoteRecord::class,
         ThemeRating::class,
-        DesignerFollowRecord::class
+        DesignerFollowRecord::class,
+        ThemeReaction::class,
+        SupportMessage::class,
+        ActivityLog::class,
+        BetaTester::class,
+        TrashItem::class,
+        MediaItem::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -47,6 +53,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun battleVoteDao(): BattleVoteDao
     abstract fun themeRatingDao(): ThemeRatingDao
     abstract fun designerFollowDao(): DesignerFollowDao
+    abstract fun themeReactionDao(): ThemeReactionDao
+    abstract fun supportMessageDao(): SupportMessageDao
+    abstract fun activityLogDao(): ActivityLogDao
+    abstract fun betaTesterDao(): BetaTesterDao
+    abstract fun trashItemDao(): TrashItemDao
+    abstract fun mediaItemDao(): MediaItemDao
 
     companion object {
         @Volatile

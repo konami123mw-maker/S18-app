@@ -26,6 +26,12 @@ class ThemeRepository(
     private val battleVoteDao = database.battleVoteDao()
     private val themeRatingDao = database.themeRatingDao()
     private val designerFollowDao = database.designerFollowDao()
+    private val themeReactionDao = database.themeReactionDao()
+    private val supportMessageDao = database.supportMessageDao()
+    private val activityLogDao = database.activityLogDao()
+    private val betaTesterDao = database.betaTesterDao()
+    private val trashItemDao = database.trashItemDao()
+    private val mediaItemDao = database.mediaItemDao()
 
     val publishedCompanies: Flow<List<Company>> = companyDao.getPublishedCompaniesFlow()
     val allCompanies: Flow<List<Company>> = companyDao.getAllCompaniesFlow()
@@ -49,6 +55,12 @@ class ThemeRepository(
     val allNotifications: Flow<List<NotificationItem>> = notificationDao.getAllNotificationsFlow()
     val unreadNotificationsCount: Flow<Int> = notificationDao.getUnreadCountFlow()
     val favoriteThemeIds: Flow<List<Long>> = favoriteDao.getFavoriteThemeIdsFlow()
+
+    val allSupportMessages: Flow<List<SupportMessage>> = supportMessageDao.getAllMessagesFlow()
+    val allActivityLogs: Flow<List<ActivityLog>> = activityLogDao.getAllLogsFlow()
+    val allBetaTesters: Flow<List<BetaTester>> = betaTesterDao.getAllTestersFlow()
+    val allTrashItems: Flow<List<TrashItem>> = trashItemDao.getAllTrashItemsFlow()
+    val allMediaItems: Flow<List<MediaItem>> = mediaItemDao.getAllMediaFlow()
 
     /**
      * Combines all published themes with company, designer, and latest version
@@ -520,5 +532,126 @@ class ThemeRepository(
         } else {
             designerFollowDao.followDesigner(DesignerFollowRecord(designerId))
         }
+    }
+
+    // --- Real Reactions System (15 emojis supported) ---
+    fun getReactionsForTheme(themeId: Long): Flow<List<ReactionCountResult>> =
+        themeReactionDao.getReactionCountsForThemeFlow(themeId)
+
+    fun getUserReactionForTheme(themeId: Long, userFingerprint: String = "local_user"): Flow<String?> =
+        themeReactionDao.getUserReactionForThemeFlow(themeId, userFingerprint)
+
+    fun getTotalReactionsForTheme(themeId: Long): Flow<Int> =
+        themeReactionDao.getTotalReactionsCountForThemeFlow(themeId)
+
+    suspend fun toggleReaction(themeId: Long, emoji: String, userFingerprint: String = "local_user") = withContext(Dispatchers.IO) {
+        val currentReaction = themeReactionDao.getUserReactionOnce(themeId, userFingerprint)
+        if (currentReaction == emoji) {
+            themeReactionDao.removeReaction(themeId, userFingerprint)
+        } else {
+            themeReactionDao.removeReaction(themeId, userFingerprint)
+            themeReactionDao.addReaction(ThemeReaction(themeId = themeId, userFingerprint = userFingerprint, emoji = emoji))
+        }
+    }
+
+    // --- Support & Direct Messaging ---
+    suspend fun sendSupportMessage(
+        senderName: String,
+        senderEmail: String,
+        category: String,
+        subject: String,
+        message: String
+    ): Long = withContext(Dispatchers.IO) {
+        supportMessageDao.insertMessage(
+            SupportMessage(
+                senderName = senderName,
+                senderEmail = senderEmail,
+                category = category,
+                subject = subject,
+                message = message
+            )
+        )
+    }
+
+    suspend fun replySupportMessage(id: Long, adminReply: String) = withContext(Dispatchers.IO) {
+        val existing = supportMessageDao.getMessageById(id) ?: return@withContext
+        val updated = existing.copy(
+            adminReply = adminReply,
+            status = "REPLIED",
+            repliedAt = System.currentTimeMillis()
+        )
+        supportMessageDao.updateMessage(updated)
+    }
+
+    suspend fun deleteSupportMessage(message: SupportMessage) = withContext(Dispatchers.IO) {
+        supportMessageDao.deleteMessage(message)
+    }
+
+    // --- Activity Log (Audit Trail) ---
+    suspend fun logAction(adminName: String, action: String, details: String) = withContext(Dispatchers.IO) {
+        activityLogDao.insertLog(
+            ActivityLog(
+                adminName = adminName,
+                action = action,
+                details = details
+            )
+        )
+    }
+
+    suspend fun clearActivityLogs() = withContext(Dispatchers.IO) {
+        activityLogDao.clearLogs()
+    }
+
+    // --- Beta Testers (S18 Labs) ---
+    suspend fun registerBetaTester(name: String, email: String, deviceModel: String, feedback: String): Long = withContext(Dispatchers.IO) {
+        betaTesterDao.insertTester(
+            BetaTester(
+                name = name,
+                email = email,
+                deviceModel = deviceModel,
+                feedback = feedback
+            )
+        )
+    }
+
+    suspend fun deleteBetaTester(tester: BetaTester) = withContext(Dispatchers.IO) {
+        betaTesterDao.deleteTester(tester)
+    }
+
+    // --- Trash System (Soft Delete & Restore) ---
+    suspend fun moveToTrash(itemType: String, originalId: Long, title: String, details: String = ""): Long = withContext(Dispatchers.IO) {
+        trashItemDao.insertTrashItem(
+            TrashItem(
+                itemType = itemType,
+                originalId = originalId,
+                title = title,
+                details = details
+            )
+        )
+    }
+
+    suspend fun deleteTrashItem(item: TrashItem) = withContext(Dispatchers.IO) {
+        trashItemDao.deleteTrashItem(item)
+    }
+
+    suspend fun emptyTrash() = withContext(Dispatchers.IO) {
+        trashItemDao.emptyTrash()
+    }
+
+    // --- Media Items ---
+    suspend fun addMediaItem(fileName: String, fileUri: String, fileType: String, fileSize: Long, relatedTitle: String): Long = withContext(Dispatchers.IO) {
+        mediaItemDao.insertMedia(
+            MediaItem(
+                fileName = fileName,
+                fileUri = fileUri,
+                fileType = fileType,
+                fileSize = fileSize,
+                relatedTitle = relatedTitle
+            )
+        )
+    }
+
+    suspend fun deleteMediaItem(item: MediaItem) = withContext(Dispatchers.IO) {
+        mediaItemDao.deleteMedia(item)
     }
 }

@@ -365,3 +365,100 @@ interface DesignerFollowDao {
     suspend fun unfollowDesigner(designerId: Long)
 }
 
+@Dao
+interface ThemeReactionDao {
+    @Query("SELECT emoji, COUNT(*) as count FROM theme_reactions WHERE themeId = :themeId GROUP BY emoji")
+    fun getReactionCountsForThemeFlow(themeId: Long): Flow<List<ReactionCountResult>>
+
+    @Query("SELECT emoji FROM theme_reactions WHERE themeId = :themeId AND userFingerprint = :userFingerprint LIMIT 1")
+    fun getUserReactionForThemeFlow(themeId: Long, userFingerprint: String): Flow<String?>
+
+    @Query("SELECT emoji FROM theme_reactions WHERE themeId = :themeId AND userFingerprint = :userFingerprint LIMIT 1")
+    suspend fun getUserReactionOnce(themeId: Long, userFingerprint: String): String?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addReaction(reaction: ThemeReaction)
+
+    @Query("DELETE FROM theme_reactions WHERE themeId = :themeId AND userFingerprint = :userFingerprint")
+    suspend fun removeReaction(themeId: Long, userFingerprint: String)
+
+    @Query("SELECT COUNT(*) FROM theme_reactions WHERE themeId = :themeId")
+    fun getTotalReactionsCountForThemeFlow(themeId: Long): Flow<Int>
+}
+
+@Dao
+interface SupportMessageDao {
+    @Query("SELECT * FROM support_messages ORDER BY createdAt DESC")
+    fun getAllMessagesFlow(): Flow<List<SupportMessage>>
+
+    @Query("SELECT * FROM support_messages WHERE senderEmail = :email ORDER BY createdAt DESC")
+    fun getMessagesForEmailFlow(email: String): Flow<List<SupportMessage>>
+
+    @Query("SELECT * FROM support_messages WHERE id = :id LIMIT 1")
+    suspend fun getMessageById(id: Long): SupportMessage?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessage(message: SupportMessage): Long
+
+    @Update
+    suspend fun updateMessage(message: SupportMessage)
+
+    @Delete
+    suspend fun deleteMessage(message: SupportMessage)
+}
+
+@Dao
+interface ActivityLogDao {
+    @Query("SELECT * FROM activity_logs ORDER BY timestamp DESC LIMIT 100")
+    fun getAllLogsFlow(): Flow<List<ActivityLog>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLog(log: ActivityLog): Long
+
+    @Query("DELETE FROM activity_logs")
+    suspend fun clearLogs()
+}
+
+@Dao
+interface BetaTesterDao {
+    @Query("SELECT * FROM beta_testers ORDER BY registeredAt DESC")
+    fun getAllTestersFlow(): Flow<List<BetaTester>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTester(tester: BetaTester): Long
+
+    @Delete
+    suspend fun deleteTester(tester: BetaTester)
+}
+
+@Dao
+interface TrashItemDao {
+    @Query("SELECT * FROM trash_items ORDER BY deletedAt DESC")
+    fun getAllTrashItemsFlow(): Flow<List<TrashItem>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTrashItem(item: TrashItem): Long
+
+    @Delete
+    suspend fun deleteTrashItem(item: TrashItem)
+
+    @Query("DELETE FROM trash_items WHERE id = :id")
+    suspend fun deleteTrashItemById(id: Long)
+
+    @Query("DELETE FROM trash_items")
+    suspend fun emptyTrash()
+}
+
+@Dao
+interface MediaItemDao {
+    @Query("SELECT * FROM media_items ORDER BY createdAt DESC")
+    fun getAllMediaFlow(): Flow<List<MediaItem>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMedia(item: MediaItem): Long
+
+    @Delete
+    suspend fun deleteMedia(item: MediaItem)
+}
+
+

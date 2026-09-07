@@ -73,6 +73,8 @@ data class ThemeEntity(
     val name: String,
     val slug: String,
     val description: String = "",
+    val descriptionAr: String = "",
+    val descriptionEn: String = "",
     val coverImageUrl: String = "",
     val tags: String = "", // Comma-separated tags
     val featured: Boolean = false,
@@ -88,6 +90,13 @@ data class ThemeEntity(
     val afterImageUrl: String = "",
     val likes: Int = 0,
     val favorites: Int = 0,
+    val packageFileName: String = "",
+    val packageFileSize: Long = 0L,
+    val isDraft: Boolean = false,
+    val isPrivatePreview: Boolean = false,
+    val previewLayoutTemplate: String = "VERTICAL_GRID",
+    val isDeleted: Boolean = false,
+    val deletedAt: Long = 0L,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
@@ -189,6 +198,10 @@ data class SubAdmin(
     val canManageCompanies: Boolean = false,
     val canModerateComments: Boolean = true,
     val canManageDesigners: Boolean = false,
+    val canManageMedia: Boolean = true,
+    val canManageSupport: Boolean = true,
+    val canManageSettings: Boolean = false,
+    val canViewAnalytics: Boolean = true,
     val isActive: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 )
@@ -339,4 +352,95 @@ data class DesignerFollowRecord(
     @PrimaryKey val designerId: Long,
     val followedAt: Long = System.currentTimeMillis()
 )
+
+@Entity(
+    tableName = "theme_reactions",
+    primaryKeys = ["themeId", "userFingerprint", "emoji"],
+    foreignKeys = [
+        ForeignKey(
+            entity = ThemeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["themeId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["themeId"])]
+)
+data class ThemeReaction(
+    val themeId: Long,
+    val userFingerprint: String = "local_user",
+    val emoji: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class ReactionCountResult(
+    val emoji: String,
+    val count: Int
+)
+
+@Entity(tableName = "support_messages")
+data class SupportMessage(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val senderName: String,
+    val senderEmail: String = "",
+    val category: String = "QUESTION", // QUESTION, SUGGESTION, ISSUE, REQUEST
+    val subject: String,
+    val message: String,
+    val adminReply: String = "",
+    val status: String = "OPEN", // OPEN, REPLIED, CLOSED
+    val createdAt: Long = System.currentTimeMillis(),
+    val repliedAt: Long = 0L
+)
+
+@Entity(tableName = "activity_logs")
+data class ActivityLog(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val adminName: String,
+    val action: String,
+    val details: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "beta_testers")
+data class BetaTester(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val email: String,
+    val deviceModel: String = "",
+    val feedback: String = "",
+    val registeredAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "trash_items")
+data class TrashItem(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val itemType: String, // "THEME", "COMPANY", "MEDIA"
+    val originalId: Long,
+    val title: String,
+    val details: String = "",
+    val deletedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "media_items")
+data class MediaItem(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val fileName: String,
+    val fileUri: String,
+    val fileType: String = "IMAGE", // IMAGE, THEME_PKG
+    val fileSize: Long = 0L,
+    val relatedTitle: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+val MediaItem.sizeFormatted: String
+    get() {
+        val kb = fileSize / 1024.0
+        val mb = kb / 1024.0
+        return when {
+            mb >= 1.0 -> String.format(java.util.Locale.US, "%.1f MB", mb)
+            kb >= 1.0 -> String.format(java.util.Locale.US, "%.1f KB", kb)
+            else -> "$fileSize B"
+        }
+    }
+
 

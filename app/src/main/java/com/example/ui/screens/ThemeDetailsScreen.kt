@@ -186,7 +186,13 @@ fun ThemeDetailsScreen(
     var nicknameInput by remember { mutableStateOf("") }
     var commentInput by remember { mutableStateOf("") }
     var commentSuccessMessage by remember { mutableStateOf<String?>(null) }
-    var userReaction by remember { mutableStateOf<String?>(null) }
+
+    // Real Room Reactions
+    val reactionsListFlow = remember(theme.id) { viewModel.getReactionsForTheme(theme.id) }
+    val roomReactionCounts by reactionsListFlow.collectAsStateWithLifecycle(emptyList())
+
+    val userReactionFlow = remember(theme.id) { viewModel.getUserReactionForTheme(theme.id) }
+    val activeUserReaction by userReactionFlow.collectAsStateWithLifecycle(null)
 
     LazyColumn(
         modifier = modifier
@@ -585,25 +591,22 @@ fun ThemeDetailsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Interactive Reactions Bar (Section 68)
+                // Interactive Room Reactions Bar (Real Room DB Persistence)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val reactions = listOf(
-                        "❤️" to (theme.likes + (if (userReaction == "❤️") 1 else 0)),
-                        "🔥" to (94 + (if (userReaction == "🔥") 1 else 0)),
-                        "⚡" to (67 + (if (userReaction == "⚡") 1 else 0)),
-                        "✨" to (52 + (if (userReaction == "✨") 1 else 0)),
-                        "😍" to (43 + (if (userReaction == "😍") 1 else 0))
-                    )
+                    val baseEmojis = listOf("❤️", "🔥", "⚡", "✨", "😍", "🚀", "💎")
 
-                    reactions.forEach { (emoji, count) ->
-                        val isSelected = userReaction == emoji
+                    baseEmojis.forEach { emoji ->
+                        val roomCount = roomReactionCounts.find { it.emoji == emoji }?.count ?: 0
+                        // Add base likes if ❤️
+                        val count = if (emoji == "❤️") theme.likes + roomCount else roomCount
+                        val isSelected = activeUserReaction == emoji
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = if (isSelected) accentColor.copy(alpha = 0.2f) else Color.Transparent,
@@ -611,22 +614,23 @@ fun ThemeDetailsScreen(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable {
-                                    userReaction = if (userReaction == emoji) null else emoji
-                                    Toast.makeText(context, if (userReaction != null) "Reaction added: $emoji" else "Reaction removed", Toast.LENGTH_SHORT).show()
+                                    viewModel.toggleReaction(theme.id, emoji)
                                 }
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(text = emoji, fontSize = 16.sp)
-                                Text(
-                                    text = "$count",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                if (count > 0) {
+                                    Text(
+                                        text = "$count",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

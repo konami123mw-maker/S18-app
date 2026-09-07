@@ -46,6 +46,7 @@ import com.example.ui.screens.SearchScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SupportScreen
 import com.example.ui.screens.ThemeDetailsScreen
+import com.example.ui.screens.ThemePublishingStudio
 import com.example.ui.screens.UpdatesScreen
 import com.example.ui.theme.S18Theme
 import kotlinx.coroutines.launch
@@ -100,7 +101,7 @@ class MainActivity : ComponentActivity() {
                             containerColor = MaterialTheme.colorScheme.background,
                             bottomBar = {
                                 // Bottom Navigation Bar is displayed for non-admin full-screen destinations
-                                if (currentScreen !is Screen.Admin) {
+                                if (currentScreen !is Screen.Admin && currentScreen !is Screen.PublishStudio) {
                                     AppBottomNavigationBar(
                                         currentScreen = currentScreen,
                                         language = language,
@@ -160,6 +161,12 @@ class MainActivity : ComponentActivity() {
                                             initialTab = screen.tab
                                         )
                                         is Screen.DeviceCompatibilityGuide -> DeviceCompatibilityScreen(viewModel = viewModel)
+                                        is Screen.PublishStudio -> ThemePublishingStudio(
+                                            viewModel = viewModel,
+                                            themeId = screen.themeId,
+                                            onDismiss = { viewModel.navigateBack() }
+                                        )
+                                        is Screen.S18Labs, is Screen.CustomizationStudio, is Screen.MostInteracted -> HomeScreen(viewModel = viewModel)
                                     }
                                 }
 
