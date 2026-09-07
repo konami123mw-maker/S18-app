@@ -343,7 +343,15 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
         val targetVersion = version ?: item.latestVersion
         val url = targetVersion?.downloadUrl?.trim() ?: ""
 
-        if (url.isEmpty() || (!url.startsWith("https://", ignoreCase = true) && !url.startsWith("http://", ignoreCase = true))) {
+        val isValidSource = url.isNotEmpty() && (
+            url.startsWith("https://", ignoreCase = true) ||
+            url.startsWith("http://", ignoreCase = true) ||
+            url.startsWith("/") ||
+            url.startsWith("file://") ||
+            url.startsWith("content://")
+        )
+
+        if (!isValidSource) {
             val err = S18Strings.get("download_error", _language.value)
             _feedbackMessage.value = err
             Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
@@ -387,12 +395,18 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
             val cleanPass = passwordOrPin.trim()
 
             // 1. Super Admin authentication:
-            val isSuperAdminMatch = cleanPass == "1234" || cleanPass == "admin123" || cleanPass == "admin" ||
+            // Explicit official credentials requested by user:
+            // Email: s18theme123@gmail.com
+            // Password: S18_THEME
+            val isOfficialSuperAdmin = (cleanId.equals("s18theme123@gmail.com", ignoreCase = true) && cleanPass == "S18_THEME") ||
+                    (cleanPass == "S18_THEME" && (cleanId.isEmpty() || cleanId.equals("s18theme123@gmail.com", ignoreCase = true)))
+
+            val isLegacySuperAdmin = cleanPass == "1234" || cleanPass == "admin123" || cleanPass == "admin" ||
                     (cleanPass.isEmpty() && (cleanId == "1234" || cleanId == "admin123" || cleanId == "admin")) ||
                     (cleanId.equals("admin", ignoreCase = true) && (cleanPass == "1234" || cleanPass.isEmpty())) ||
                     (cleanId.equals("admin@s18theme.com", ignoreCase = true) && (cleanPass == "1234" || cleanPass == "admin"))
 
-            if (isSuperAdminMatch) {
+            if (isOfficialSuperAdmin || isLegacySuperAdmin) {
                 _isAdminAuthenticated.value = true
                 _isSuperAdmin.value = true
                 _currentSubAdmin.value = null

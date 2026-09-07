@@ -727,7 +727,7 @@ fun AdminDashboardOverview(
                     AdminStatCard(
                         title = S18Strings.get("total_companies", language),
                         value = companies.size.toString(),
-                        color = Color(0xFF8B5CF6),
+                        color = Color(0xFF38BDF8),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -1111,218 +1111,282 @@ fun AdminThemeEditDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(if (item == null) S18Strings.get("add_theme", language) else S18Strings.get("edit_theme", language))
+            Text(
+                text = if (item == null) S18Strings.get("add_theme", language) else S18Strings.get("edit_theme", language),
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF00E5FF)
+            )
         },
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Row 1: Name and Slug (2 columns side by side)
                 item {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = {
-                            name = it
-                            if (item == null) {
-                                slug = it.lowercase().replace(" ", "-").replace("[^a-z0-9-]".toRegex(), "")
-                            }
-                        },
-                        label = { Text("Theme Name") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                item {
-                    OutlinedTextField(
-                        value = slug,
-                        onValueChange = { slug = it },
-                        label = { Text("Slug") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                item {
-                    // Company Selection
-                    Text("Company", style = MaterialTheme.typography.labelSmall)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(companies) { comp ->
-                            FilterChip(
-                                title = comp.name,
-                                isSelected = comp.id == selectedCompanyId,
-                                onClick = { selectedCompanyId = comp.id }
-                            )
-                        }
-                    }
-                }
-                item {
-                    // Designer Selection
-                    Text("Designer", style = MaterialTheme.typography.labelSmall)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(designers) { des ->
-                            FilterChip(
-                                title = des.name,
-                                isSelected = des.id == selectedDesignerId,
-                                onClick = { selectedDesignerId = des.id }
-                            )
-                        }
-                    }
-                }
-                item {
-                    // Cover Image Section with Device Gallery Selection
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("غلاف الثيم (Cover Image - 2640×1200)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFF00E5FF))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(55.dp)
-                                    .aspectRatio(1200f / 2640f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .border(1.dp, Color(0xFF00E5FF), RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF0B1019))
-                            ) {
-                                ThemeImage(
-                                    imageUrl = coverUrl,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentDescription = "Cover"
-                                )
-                            }
-
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Button(
-                                    onClick = { coverGalleryPicker.launch("image/*") },
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF1E293B),
-                                        contentColor = Color(0xFF00E5FF)
-                                    ),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6000E5FF)),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("اختيار من معرض الجهاز", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = {
+                                name = it
+                                if (item == null) {
+                                    slug = it.lowercase().replace(" ", "-").replace("[^a-z0-9-]".toRegex(), "")
                                 }
+                            },
+                            label = { Text("اسم الثيم") },
+                            modifier = Modifier.weight(1.2f),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = slug,
+                            onValueChange = { slug = it },
+                            label = { Text("Slug") },
+                            modifier = Modifier.weight(0.8f),
+                            singleLine = true
+                        )
+                    }
+                }
 
-                                OutlinedTextField(
-                                    value = coverUrl,
-                                    onValueChange = { coverUrl = it },
-                                    label = { Text("أو رابط / اسم الصورة", fontSize = 11.sp) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
+                // Row 2: Company Selection
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("الشركة / الماركة (Brand)", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF00E5FF))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(companies) { comp ->
+                                FilterChip(
+                                    title = comp.name,
+                                    isSelected = comp.id == selectedCompanyId,
+                                    onClick = { selectedCompanyId = comp.id }
                                 )
                             }
                         }
                     }
                 }
+
+                // Row 3: Designer Selection
                 item {
-                    // Previews Gallery Section (2640x1200 Device Screenshots)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("المصمم (Designer)", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(designers) { des ->
+                                FilterChip(
+                                    title = des.name,
+                                    isSelected = des.id == selectedDesignerId,
+                                    onClick = { selectedDesignerId = des.id }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Section A: Cover Image (Separated completely)
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF0F172A),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4000E5FF))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "صور المعاينة الاستعراضية (${previewUrls.size})",
+                                text = "🖼️ صورة الغلاف الأساسية (Cover - 1200×2640)",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF38BDF8)
+                                color = Color(0xFF00E5FF)
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                OutlinedButton(
-                                    onClick = { showAddUrlInput = !showAddUrlInput },
-                                    shape = RoundedCornerShape(8.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6038BDF8)),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("+ رابط URL", fontSize = 11.sp, color = Color(0xFF38BDF8))
-                                }
-
-                                OutlinedButton(
-                                    onClick = { previewsGalleryPicker.launch("image/*") },
-                                    shape = RoundedCornerShape(8.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6038BDF8)),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.Image, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("+ صور من الجهاز", fontSize = 11.sp, color = Color(0xFF38BDF8))
-                                }
-                            }
-                        }
-
-                        if (showAddUrlInput) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                OutlinedTextField(
-                                    value = customPreviewUrlInput,
-                                    onValueChange = { customPreviewUrlInput = it },
-                                    placeholder = { Text("https://... أو اسم ملف المعاينة", fontSize = 11.sp) },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true
-                                )
-                                Button(
-                                    onClick = {
-                                        val trimmed = customPreviewUrlInput.trim()
-                                        if (trimmed.isNotEmpty()) {
-                                            if (!previewUrls.contains(trimmed)) {
-                                                previewUrls = previewUrls + trimmed
-                                            }
-                                            customPreviewUrlInput = ""
-                                            showAddUrlInput = false
-                                        }
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024))
+                                Box(
+                                    modifier = Modifier
+                                        .width(55.dp)
+                                        .aspectRatio(1200f / 2640f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(1.dp, Color(0xFF00E5FF), RoundedCornerShape(8.dp))
+                                        .background(Color(0xFF0B1019))
                                 ) {
-                                    Text("إضافة", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    ThemeImage(
+                                        imageUrl = coverUrl,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentDescription = "Cover"
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Button(
+                                        onClick = { coverGalleryPicker.launch("image/*") },
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF1E293B),
+                                            contentColor = Color(0xFF00E5FF)
+                                        ),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6000E5FF)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("رفع غلاف من المعرض", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    OutlinedTextField(
+                                        value = coverUrl,
+                                        onValueChange = { coverUrl = it },
+                                        label = { Text("أو رابط الغلاف المباشر", fontSize = 11.sp) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
+                                    )
                                 }
                             }
                         }
+                    }
+                }
 
-                        if (previewUrls.isNotEmpty()) {
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(previewUrls) { pUrl ->
-                                    Box(
-                                        modifier = Modifier
-                                            .width(60.dp)
-                                            .aspectRatio(1200f / 2640f)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(8.dp))
-                                            .background(Color(0xFF0B1019))
+                // Section B: Previews Gallery (Completely Separate, Vertical 3-Column Grid)
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF0F172A),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4038BDF8))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "📱 صور المعاينة (${previewUrls.size}) - شبكة عمودية",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF38BDF8)
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    OutlinedButton(
+                                        onClick = { showAddUrlInput = !showAddUrlInput },
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6038BDF8)),
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
-                                        ThemeImage(
-                                            imageUrl = pUrl,
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentDescription = "Preview"
-                                        )
+                                        Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text("+ رابط", fontSize = 10.sp, color = Color(0xFF38BDF8))
+                                    }
 
-                                        IconButton(
-                                            onClick = {
-                                                if (previewUrls.size > 1) {
-                                                    previewUrls = previewUrls.filter { it != pUrl }
-                                                }
-                                            },
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .size(22.dp)
-                                                .background(Color(0xCCEF4444), CircleShape)
-                                        ) {
-                                            Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(13.dp))
-                                        }
+                                    OutlinedButton(
+                                        onClick = { previewsGalleryPicker.launch("image/*") },
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6038BDF8)),
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Image, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text("+ من الجهاز", fontSize = 10.sp, color = Color(0xFF38BDF8))
                                     }
                                 }
                             }
+
+                            if (showAddUrlInput) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = customPreviewUrlInput,
+                                        onValueChange = { customPreviewUrlInput = it },
+                                        placeholder = { Text("https://... أو اسم ملف المعاينة", fontSize = 11.sp) },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+                                    Button(
+                                        onClick = {
+                                            val trimmed = customPreviewUrlInput.trim()
+                                            if (trimmed.isNotEmpty()) {
+                                                if (!previewUrls.contains(trimmed)) {
+                                                    previewUrls = previewUrls + trimmed
+                                                }
+                                                customPreviewUrlInput = ""
+                                                showAddUrlInput = false
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF38BDF8), contentColor = Color(0xFF031024))
+                                    ) {
+                                        Text("إضافة", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+
+                            // Clean Vertical Grid (3 Columns) for phone mockup aspect ratio (1200x2640)
+                            if (previewUrls.isNotEmpty()) {
+                                val chunkedPreviews = previewUrls.chunked(3)
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    chunkedPreviews.forEach { rowItems ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            rowItems.forEach { pUrl ->
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .aspectRatio(1200f / 2640f)
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .border(1.dp, Color(0x4038BDF8), RoundedCornerShape(8.dp))
+                                                        .background(Color(0xFF0B1019))
+                                                ) {
+                                                    ThemeImage(
+                                                        imageUrl = pUrl,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentDescription = "Preview"
+                                                    )
+
+                                                    IconButton(
+                                                        onClick = {
+                                                            if (previewUrls.size > 1) {
+                                                                previewUrls = previewUrls.filter { it != pUrl }
+                                                            }
+                                                        },
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .size(20.dp)
+                                                            .background(Color(0xCCEF4444), CircleShape)
+                                                    ) {
+                                                        Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(12.dp))
+                                                    }
+                                                }
+                                            }
+                                            // Fill empty slots in row if rowItems.size < 3
+                                            repeat(3 - rowItems.size) {
+                                                Spacer(modifier = Modifier.weight(1f))
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                Text(
+                                    text = "لم يتم إضافة صور معاينة بعد. انقر على الزر أعلاه لإضافة لقطات شاشة.",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
                         }
                     }
                 }
+
+                // Section C: Theme Package File (2 Clear Choices)
                 item {
                     // Theme File Package Section: 2 clear options (Direct Device Upload vs External Link)
                     Column(
@@ -1335,7 +1399,7 @@ fun AdminThemeEditDialog(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = if (language == AppLanguage.AR) "ملف الثيم للتحميل" else "Theme Package File",
+                            text = if (language == AppLanguage.AR) "📦 ملف الثيم للتحميل (اختر طريقة الرفع)" else "Theme Package File",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = Color(0xFF00E5FF)
                         )
@@ -1465,20 +1529,37 @@ fun AdminThemeEditDialog(
                         }
                     }
                 }
+
+                // Row 4: Version and Tags (2 columns side by side)
                 item {
-                    OutlinedTextField(
-                        value = versionNum,
-                        onValueChange = { versionNum = it },
-                        label = { Text("Version") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = versionNum,
+                            onValueChange = { versionNum = it },
+                            label = { Text("الإصدار (Version)") },
+                            modifier = Modifier.weight(0.8f),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = tags,
+                            onValueChange = { tags = it },
+                            label = { Text("الوسوم (Tags)") },
+                            modifier = Modifier.weight(1.2f),
+                            singleLine = true
+                        )
+                    }
                 }
+
+                // Row 5: Changelog & Description
                 item {
                     OutlinedTextField(
                         value = changelog,
                         onValueChange = { changelog = it },
-                        label = { Text("What's New / Changelog") },
-                        minLines = 2,
+                        label = { Text("سجل التغييرات (What's New)") },
+                        minLines = 1,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -1486,26 +1567,20 @@ fun AdminThemeEditDialog(
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
-                        label = { Text("Description") },
+                        label = { Text("وصف الثيم (Description)") },
                         minLines = 2,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                item {
-                    OutlinedTextField(
-                        value = tags,
-                        onValueChange = { tags = it },
-                        label = { Text("Tags (comma-separated)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+
+                // Row 6: Toggles
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Featured")
+                        Text("مميز (Featured)")
                         Switch(
                             checked = isFeatured,
                             onCheckedChange = { isFeatured = it },
@@ -1519,7 +1594,7 @@ fun AdminThemeEditDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Published (Uncheck for Draft)")
+                        Text("نشر عام (Published)")
                         Switch(
                             checked = isPublished,
                             onCheckedChange = { isPublished = it },
@@ -2239,7 +2314,7 @@ fun AdminAnalyticsView(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 AdminStatCard(title = "Total Views", value = totalViews.toString(), color = Color(0xFF00E5FF), modifier = Modifier.weight(1f))
-                AdminStatCard(title = "Total Downloads", value = totalDownloads.toString(), color = Color(0xFF8B5CF6), modifier = Modifier.weight(1f))
+                AdminStatCard(title = "Total Downloads", value = totalDownloads.toString(), color = Color(0xFFF59E0B), modifier = Modifier.weight(1f))
             }
         }
 
@@ -2713,7 +2788,7 @@ fun AdminSettingsView(
 
     val availableAccents = listOf(
         "#00E5FF" to "Cyan Cyber",
-        "#7C4DFF" to "Deep Violet",
+        "#0284C7" to "Ocean Blue",
         "#00E676" to "Matrix Green",
         "#FF9100" to "Solar Amber",
         "#FF1744" to "Crimson Flame"

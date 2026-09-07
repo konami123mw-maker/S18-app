@@ -387,8 +387,8 @@ fun ThemeDetailsScreen(
                     if (theme.featured) {
                         BadgeTag(
                             text = S18Strings.get("featured_badge", language),
-                            backgroundColor = Color(0xFF8B5CF6),
-                            textColor = Color.White
+                            backgroundColor = Color(0xFFF59E0B),
+                            textColor = Color(0xFF031024)
                         )
                     }
                     val tagsList = theme.tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }

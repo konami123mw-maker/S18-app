@@ -189,14 +189,44 @@ class ThemeRepository(
             } else {
                 versionDao.updateVersion(version.copy(themeId = themeId, updatedAt = System.currentTimeMillis()))
             }
+        } else {
+            // Auto-create a default published version if none exists, ensuring downloadUrl and versioning are valid
+            val existingVer = versionDao.getLatestPublishedVersion(themeId)
+            if (existingVer == null) {
+                versionDao.insertVersion(
+                    ThemeVersion(
+                        themeId = themeId,
+                        version = "1.0",
+                        downloadUrl = sanitizedTheme.coverImageUrl.ifBlank { "https://t.me/s18theme" },
+                        changelog = "Initial release",
+                        releaseDate = "2026",
+                        published = sanitizedTheme.published
+                    )
+                )
+            }
         }
 
-        if (previews != null) {
+        if (previews != null && previews.isNotEmpty()) {
             previewDao.deletePreviewsForTheme(themeId)
             previewDao.insertPreviews(previews.mapIndexed { idx, p ->
-                p.copy(themeId = themeId, sortOrder = idx + 1)
+                p.copy(id = 0L, themeId = themeId, sortOrder = idx + 1)
             })
+        } else {
+            val existingPreviews = previewDao.getPreviewsForTheme(themeId)
+            if (existingPreviews.isEmpty() && sanitizedTheme.coverImageUrl.isNotBlank()) {
+                previewDao.insertPreview(
+                    ThemePreview(
+                        id = 0L,
+                        themeId = themeId,
+                        imageUrl = sanitizedTheme.coverImageUrl,
+                        sortOrder = 1
+                    )
+                )
+            }
         }
+
+        // Notify and trigger fullThemesFlow update with up-to-date relationships
+        themeDao.updateTheme(sanitizedTheme.copy(id = themeId, updatedAt = System.currentTimeMillis()))
 
         themeId
     }

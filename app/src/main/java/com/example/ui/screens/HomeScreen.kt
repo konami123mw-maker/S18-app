@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -95,15 +96,23 @@ fun HomeScreen(
     val selectedMood by viewModel.selectedMood.collectAsStateWithLifecycle()
 
     var selectedCompanyFilterId by remember { mutableStateOf<Long?>(null) }
+    var selectedContentType by remember { mutableStateOf(0) } // 0: All, 1: Themes, 2: Wallpapers
 
-    // Filter published themes based on mood and optional company filter
+    // Filter published themes based on content type, mood, and optional company filter
     val publishedThemes = fullThemes.filter { it.theme.published }
         .filter { item ->
+            val isWallpaper = item.theme.tags.contains("wallpaper", ignoreCase = true) ||
+                    item.theme.tags.contains("خلفية", ignoreCase = true)
+            val matchesType = when (selectedContentType) {
+                1 -> !isWallpaper // Themes only
+                2 -> isWallpaper  // Wallpapers only
+                else -> true      // All content
+            }
             val matchesCompany = selectedCompanyFilterId == null || item.theme.companyId == selectedCompanyFilterId
             val matchesMood = selectedMood == null ||
                 item.theme.tags.contains(selectedMood!!, ignoreCase = true) ||
                 item.theme.name.contains(selectedMood!!, ignoreCase = true)
-            matchesCompany && matchesMood
+            matchesType && matchesCompany && matchesMood
         }
 
     val featuredThemes = publishedThemes.filter { it.theme.featured }
@@ -145,7 +154,7 @@ fun HomeScreen(
                 language = language,
                 activeBattlesCount = activeBattles.size,
                 collectionsCount = publicCollections.size,
-                onWallpapersClick = { viewModel.navigateTo(Screen.Search) },
+                onWallpapersClick = { selectedContentType = 2 },
                 onBattlesClick = { viewModel.navigateTo(Screen.Battles) },
                 onCollectionsClick = { viewModel.navigateTo(Screen.Collections) },
                 onCategoriesClick = { viewModel.navigateTo(Screen.Categories) }
@@ -240,9 +249,13 @@ fun HomeScreen(
         item {
             val titleText = if (selectedCompanyFilterId != null) {
                 val compName = companies.firstOrNull { it.id == selectedCompanyFilterId }?.name ?: ""
-                if (language == AppLanguage.AR) "ثيمات $compName (${publishedThemes.size})" else "$compName Themes (${publishedThemes.size})"
+                if (language == AppLanguage.AR) "محتوى $compName (${publishedThemes.size})" else "$compName Content (${publishedThemes.size})"
             } else {
-                if (language == AppLanguage.AR) "أحدث الثيمات المتاحة (${publishedThemes.size})" else "Latest Themes (${publishedThemes.size})"
+                when (selectedContentType) {
+                    1 -> if (language == AppLanguage.AR) "الثيمات المتاحة (${publishedThemes.size})" else "Available Themes (${publishedThemes.size})"
+                    2 -> if (language == AppLanguage.AR) "الخلفيات المتاحة (${publishedThemes.size})" else "Available Wallpapers (${publishedThemes.size})"
+                    else -> if (language == AppLanguage.AR) "أحدث الثيمات والخلفيات (${publishedThemes.size})" else "Latest Themes & Wallpapers (${publishedThemes.size})"
+                }
             }
 
             MobileSectionHeader(
@@ -250,6 +263,46 @@ fun HomeScreen(
                 actionText = if (language == AppLanguage.AR) "بحث متقدم" else "Search",
                 onActionClick = { viewModel.navigateTo(Screen.Search) }
             )
+
+            // Content Type Segmented Filter (All / Themes / Wallpapers)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val types = listOf(
+                    0 to if (language == AppLanguage.AR) "الكل" else "All",
+                    1 to if (language == AppLanguage.AR) "الثيمات" else "Themes",
+                    2 to if (language == AppLanguage.AR) "الخلفيات" else "Wallpapers"
+                )
+                types.forEach { (typeId, label) ->
+                    val isSelected = selectedContentType == typeId
+                    Surface(
+                        onClick = { selectedContentType = typeId },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isSelected) Color(0xFF00E5FF).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) Color(0xFF00E5FF) else Color.Transparent
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
         }
 
         if (latestThemes.isEmpty()) {
@@ -575,7 +628,7 @@ private fun MobileFeatureShortcuts(
             icon = Icons.Default.Category,
             label = if (language == AppLanguage.AR) "الأقسام" else "Categories",
             badge = null,
-            tint = Color(0xFF9333EA),
+            tint = Color(0xFFF59E0B),
             onClick = onCategoriesClick
         )
     }
@@ -638,6 +691,61 @@ private fun ShortcutItem(
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1
         )
+    }
+}
+
+/**
+ * Hero Section (Mobile-First banner with quick navigation)
+ */
+@Composable
+fun HeroSection(
+    language: AppLanguage,
+    onExploreThemes: () -> Unit = {},
+    onBrowseCompanies: () -> Unit = {},
+    onSearchClick: () -> Unit = {}
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = if (language == AppLanguage.AR) "اكتشف أفضل الثيمات والخلفيات" else "Discover Premium Themes",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF00E5FF)
+            )
+            Text(
+                text = if (language == AppLanguage.AR) "تخصيص متكامل لهاتفك بأعلى معايير الدقة" else "Complete customization tailored for your phone",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF94A3B8)
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onExploreThemes,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF), contentColor = Color(0xFF031024))
+                ) {
+                    Text(if (language == AppLanguage.AR) "استكشف الآن" else "Explore", fontWeight = FontWeight.Bold)
+                }
+                androidx.compose.material3.OutlinedButton(
+                    onClick = onBrowseCompanies,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f))
+                ) {
+                    Text(if (language == AppLanguage.AR) "الماركات" else "Brands", color = Color(0xFF00E5FF))
+                }
+            }
+        }
     }
 }
 

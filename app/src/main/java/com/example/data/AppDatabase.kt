@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
         ThemeRating::class,
         DesignerFollowRecord::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

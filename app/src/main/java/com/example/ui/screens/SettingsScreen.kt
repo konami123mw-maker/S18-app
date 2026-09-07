@@ -69,7 +69,7 @@ fun SettingsScreen(
 
     val availableAccents = listOf(
         "#00E5FF" to "Cyan",
-        "#7C4DFF" to "Violet",
+        "#0284C7" to "Ocean Blue",
         "#00E676" to "Green",
         "#FF9100" to "Amber",
         "#FF1744" to "Crimson"

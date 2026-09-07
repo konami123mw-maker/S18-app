@@ -87,7 +87,7 @@ fun AppDrawerContent(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.linearGradient(
-                                    listOf(Color(0xFF00E5FF), Color(0xFF7C4DFF))
+                                    listOf(Color(0xFF00E5FF), Color(0xFF0284C7))
                                 )
                             ),
                         contentAlignment = Alignment.Center

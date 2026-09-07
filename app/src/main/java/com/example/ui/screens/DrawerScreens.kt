@@ -471,7 +471,7 @@ fun SupportScreen(
                             context.startActivity(intent)
                         },
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C4DFF)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Email", fontWeight = FontWeight.Bold)
@@ -521,7 +521,7 @@ fun AboutUsScreen(
                                 .size(64.dp)
                                 .background(
                                     androidx.compose.ui.graphics.Brush.linearGradient(
-                                        listOf(Color(0xFF00E5FF), Color(0xFF7C4DFF))
+                                        listOf(Color(0xFF00E5FF), Color(0xFF0284C7))
                                     ),
                                     RoundedCornerShape(16.dp)
                                 ),
